@@ -1,0 +1,3 @@
+[submodule "VEngine/Libs/glfw"]
+	path = VEngine/Libs/glfw
+	url = https://github.com/glfw/glfw.git

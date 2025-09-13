@@ -1,0 +1,21 @@
+add_library(VEngine Src/Layers/LayerStack.cpp Src/Application.cpp Src/Window/Window.cpp)
+
+add_subdirectory(Libs/glfw)
+
+include_directories("Src/Layers")
+include_directories("Src/Window")
+include_directories("Src/Events")
+include_directories("Src/")
+include_directories("Libs/glfw/include/GLFW/")
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(VEngine PRIVATE VENGINE_DEBUG_BUILD)
+    message("[ENGINE] Debug build enabled")
+endif()
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_definitions(VEngine PRIVATE VENGINE_RELEASE_BUILD)
+    message("[ENGINE] Release build enabled")
+endif()
+
+# Add precompiled header (for example "pch.h")
+target_precompile_headers(VEngine PRIVATE Src/VePCH.h)
