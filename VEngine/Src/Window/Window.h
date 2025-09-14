@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Events.h"
+#include "Maths.h"
 
 /*
     Contains Window and WindowStack classes
@@ -15,20 +16,6 @@ struct GLFWwindow;
 
 namespace VEngine
 {
-    struct Vec2
-    {
-        float x, y;
-
-        Vec2(float px = 0.0f, float py = 0.0f) : x(px), y(py) {}
-
-        Vec2 &operator=(const Vec2 &other)
-        {
-            this->x = other.x;
-            this->y = other.y;
-            return *this;
-        }
-    };
-
     struct WindowData
     {
         std::string Name;
@@ -43,7 +30,7 @@ namespace VEngine
         WindowData Data;
         std::function<void(Event &)> Callback;
     };
-    
+
     class Window
     {
     public:
@@ -58,6 +45,7 @@ namespace VEngine
         void Init(const WindowData &Data);
         void SetVSync(bool state);
         void SetEventCallback(const std::function<void(Event &)> &Callback) { _Data.Callback = Callback; }
+        GLFWwindow *GetRawHandle() const { return _Window; }
 
     private:
         GLFWwindow *_Window = nullptr;

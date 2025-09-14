@@ -1,6 +1,7 @@
 #include "VePCH.h"
 #include "Window.h"
 #include "glfw3.h"
+#include "Input.h"
 
 void VEngine_WindowCloseCallBack(GLFWwindow *window)
 {
@@ -25,6 +26,19 @@ void VEngine_KeyCallBack(GLFWwindow *window, int key, int scancode, int action, 
 
     if (action == GLFW_PRESS)
     {
+        if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT)
+            VEngine::Input::SetModState(VEngine::Input_mod_Shift, true);
+        else if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL)
+            VEngine::Input::SetModState(VEngine::Input_mod_Control, true);
+        else if (key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT)
+            VEngine::Input::SetModState(VEngine::Input_mod_Alt, true);
+        else if (key == GLFW_KEY_LEFT_SUPER || key == GLFW_KEY_RIGHT_SUPER)
+            VEngine::Input::SetModState(VEngine::Input_mod_Super, true);
+        else if (key == GLFW_KEY_CAPS_LOCK)
+            VEngine::Input::SetModState(VEngine::Input_mod_CapsLock, true);
+        else if (key == GLFW_KEY_NUM_LOCK)
+            VEngine::Input::SetModState(VEngine::Input_mod_NumLock, true);
+
         VEngine::KeyPressedEvent e(key);
         Data->Callback(e);
     }
@@ -35,6 +49,19 @@ void VEngine_KeyCallBack(GLFWwindow *window, int key, int scancode, int action, 
     }
     else if (action == GLFW_RELEASE)
     {
+        if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT)
+            VEngine::Input::SetModState(VEngine::Input_mod_Shift, false);
+        else if (key == GLFW_KEY_LEFT_CONTROL || key == GLFW_KEY_RIGHT_CONTROL)
+            VEngine::Input::SetModState(VEngine::Input_mod_Control, false);
+        else if (key == GLFW_KEY_LEFT_ALT || key == GLFW_KEY_RIGHT_ALT)
+            VEngine::Input::SetModState(VEngine::Input_mod_Alt, false);
+        else if (key == GLFW_KEY_LEFT_SUPER || key == GLFW_KEY_RIGHT_SUPER)
+            VEngine::Input::SetModState(VEngine::Input_mod_Super, false);
+        else if (key == GLFW_KEY_CAPS_LOCK)
+            VEngine::Input::SetModState(VEngine::Input_mod_CapsLock, false);
+        else if (key == GLFW_KEY_NUM_LOCK)
+            VEngine::Input::SetModState(VEngine::Input_mod_NumLock, false);
+
         VEngine::KeyReleasedEvent e(key);
         Data->Callback(e);
     }

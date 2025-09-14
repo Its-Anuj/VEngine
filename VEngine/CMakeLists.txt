@@ -1,10 +1,11 @@
-add_library(VEngine Src/Layers/LayerStack.cpp Src/Application.cpp Src/Window/Window.cpp)
+add_library(VEngine Src/Layers/LayerStack.cpp Src/Application.cpp Src/Window/Window.cpp Src/Input/Input.cpp)
 
 add_subdirectory(Libs/glfw)
 
 include_directories("Src/Layers")
 include_directories("Src/Window")
 include_directories("Src/Events")
+include_directories("Src/Input")
 include_directories("Src/")
 include_directories("Libs/glfw/include/GLFW/")
 

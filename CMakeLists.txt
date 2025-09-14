@@ -11,6 +11,7 @@ add_subdirectory(VEngine)
 
 include_directories("VEngine/Src/Layers")
 include_directories("VEngine/Src/")
+include_directories("VEngine/Src/Input")
 include_directories("VEngine/Src/Events")
 include_directories("VEngine/Src/Window")
 include_directories("VEngine/Libs/glfw/include/GLFW/")

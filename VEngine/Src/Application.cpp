@@ -14,6 +14,8 @@ namespace VEngine
 
         _Window.Init(Data);
         _Window.SetEventCallback(VENGINE_EVENT_CALLBACK_FN(OnEvent));
+
+        Input::Init(_Window.GetRawHandle());
     }
 
     void Application::OnUpdate()
@@ -30,6 +32,7 @@ namespace VEngine
     void Application::OnTerminate()
     {
         _Stack.Flush();
+        Input::ShutDown();
         _Window.Terminate();
     }
 

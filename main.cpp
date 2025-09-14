@@ -16,11 +16,23 @@ namespace VEngine
         }
 
         void OnInit() override {}
-        void OnUpdate() override {}
+        
+        void OnUpdate() override
+        {
+            if(Input::IsKeyPressed(Input_key_W) == InputResult::INPUT_PRESS && Input::GetModState(Input_mod_Shift))
+            {
+                VENGINE_CORE_PRINTLN("W Press")
+            }
+            if(Input::IsKeyPressed(Input_key_W) == InputResult::INPUT_REPEAT)
+            {
+                VENGINE_CORE_PRINTLN("W Repeat")
+            }
+        }
+
         void OnTerminate() override {}
         void OnEvent(Event &e) override
         {
-            if(e.GetType() == WindowResizeEvent::GetStaticType())
+            if (e.GetType() == WindowResizeEvent::GetStaticType())
             {
                 VENGINE_APP_PRINTLN("Window Resize")
             }
