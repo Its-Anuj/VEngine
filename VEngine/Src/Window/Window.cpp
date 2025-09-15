@@ -1,6 +1,11 @@
 #include "VePCH.h"
 #include "Window.h"
-#include "glfw3.h"
+
+#define GLFW_INCLUDE_VULKAN
+#include <glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <glfw3native.h>
+
 #include "Input.h"
 
 void VEngine_WindowCloseCallBack(GLFWwindow *window)
@@ -91,6 +96,7 @@ void Vengine_MouseButtonCallBack(GLFWwindow *window, int button, int action, int
 void VEngine_CursorPosCallBack(GLFWwindow *window, double xpos, double ypos)
 {
     VEngine::WindowFreePointer *Data = (VEngine::WindowFreePointer *)glfwGetWindowUserPointer(window);
+    VEngine::Input::SetCursorPos({xpos, ypos});
 
     VEngine::CursorPosEvent e(xpos, ypos);
     Data->Callback(e);
@@ -156,6 +162,8 @@ namespace VEngine
     void Window::Init(const WindowData &Data)
     {
         _Data.Data = Data;
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
         _Window = glfwCreateWindow(800, 600, "VEditor", NULL, NULL);
         glfwMakeContextCurrent(_Window);
         VENGINE_CORE_PRINTLN("[WINDOW] Created: " << _Data.Data.Name << " with, " << _Data.Data.Dimensions.x << "x" << _Data.Data.Dimensions.y)
@@ -182,5 +190,10 @@ namespace VEngine
             glfwSwapInterval(true);
         else
             glfwSwapInterval(false);
+    }
+
+    void *Window::GetWin32Surface()
+    {
+        return (void*)glfwGetWin32Window(_Window);
     }
 } // namespace VEngine

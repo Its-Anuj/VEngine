@@ -39,7 +39,7 @@ namespace VEngine
         static void SetModState(Input_mod mod, bool state) { Get().Impl_SetModState(mod, state); }
 
         static const Vec2 &GetCursorPos() { return Get().Impl_GetCursorPos(); }
-        static void SerCursorPos(const Vec2 &Pos) { Get().Impl_SetCursorPos(Pos); }
+        static void SetCursorPos(const Vec2 &Pos) { Get().Impl_SetCursorPos(Pos); }
 
     private:
         void Impl_Init(GLFWwindow *Window);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "VEngine.h"
+#include "VulkanRenderer.h"
 
 namespace VEngine
 {
@@ -22,6 +23,7 @@ namespace VEngine
 
     private:
         Window _Window;
+        VulkanRenderer Renderer;
         LayerStack _Stack;
     };
 } // namespace VEngine

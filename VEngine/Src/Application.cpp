@@ -7,6 +7,8 @@ namespace VEngine
 
     void Application::OnInit()
     {
+        VENGINE_DEBUG_TIMER("Initialization!")
+
         VEngine::WindowData Data;
         Data.Name = "VEditor";
         Data.Dimensions = VEngine::Vec2(800, 600);
@@ -16,6 +18,21 @@ namespace VEngine
         _Window.SetEventCallback(VENGINE_EVENT_CALLBACK_FN(OnEvent));
 
         Input::Init(_Window.GetRawHandle());
+
+        {
+            VENGINE_DEBUG_TIMER("Vulkan Init")
+
+            VulkanRenderSpec Spec;
+            Spec.Name = "VEngine";
+            Spec.Version = VulkanSupportedVersions::V_1_0;
+            Spec.EnableValidationLayer = true;
+
+            Spec.RequirerdExtensions.push_back("VK_KHR_surface");
+            Spec.RequirerdExtensions.push_back("VK_KHR_win32_surface");
+            Spec.Win32Surface = _Window.GetWin32Surface();
+
+            Renderer.Init(Spec);
+        }
     }
 
     void Application::OnUpdate()
@@ -31,19 +48,20 @@ namespace VEngine
 
     void Application::OnTerminate()
     {
+        VENGINE_DEBUG_TIMER("Terminate!")
+
         _Stack.Flush();
+        Renderer.Terminate();
         Input::ShutDown();
         _Window.Terminate();
     }
 
     void Application::OnEvent(Event &e)
     {
-        if(e.GetType() == WindowCloseEvent::GetStaticType())
-        {
+        if (e.GetType() == WindowCloseEvent::GetStaticType())
             VENGINE_CORE_PRINTLN("Window Close")
-        }
 
-        for(auto layer : _Stack)
+        for (auto layer : _Stack)
             layer->OnEvent(e);
     }
 

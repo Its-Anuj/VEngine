@@ -1,6 +1,6 @@
 #include "VePCH.h"
 #include "Application.h"
-#include "glfw3.h"
+
 
 namespace VEngine
 {
@@ -15,27 +15,22 @@ namespace VEngine
         {
         }
 
-        void OnInit() override {}
-        
-        void OnUpdate() override
+        void OnInit() override
         {
-            if(Input::IsKeyPressed(Input_key_W) == InputResult::INPUT_PRESS && Input::GetModState(Input_mod_Shift))
-            {
-                VENGINE_CORE_PRINTLN("W Press")
-            }
-            if(Input::IsKeyPressed(Input_key_W) == InputResult::INPUT_REPEAT)
-            {
-                VENGINE_CORE_PRINTLN("W Repeat")
-            }
         }
 
-        void OnTerminate() override {}
+        void OnUpdate() override
+        {
+        }
+
+        void OnTerminate() override
+        {
+        }
+
         void OnEvent(Event &e) override
         {
             if (e.GetType() == WindowResizeEvent::GetStaticType())
-            {
                 VENGINE_APP_PRINTLN("Window Resize")
-            }
         }
 
     private:

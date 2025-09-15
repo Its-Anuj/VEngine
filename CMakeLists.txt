@@ -15,6 +15,8 @@ include_directories("VEngine/Src/Input")
 include_directories("VEngine/Src/Events")
 include_directories("VEngine/Src/Window")
 include_directories("VEngine/Libs/glfw/include/GLFW/")
+include_directories("VEngine/Src/Profiling")
+include_directories("VEngine/Src/Rendering/Vulkan")
 
 # Set output directories for all targets
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)   # Static libraries (.lib)
@@ -28,7 +30,7 @@ set(ENGINE_DIR ${SIMULATION_DIR}/VEngine)
 set(ENGINE_SRC_DIR ${ENGINE_DIR}/Src)
 set(ENGINE_LIBS_DIR ${ENGINE_DIR}/Libs)
 
-target_link_libraries(Editor PRIVATE VEngine glfw)
+target_link_libraries(Editor PRIVATE VEngine glfw VEngineVulkan)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(Editor PRIVATE VENGINE_DEBUG_BUILD)
@@ -47,3 +49,7 @@ elseif(APPLE)
 else()
     target_link_libraries(Editor PRIVATE GL)
 endif()
+
+set(VULKAN_SDK "C:/VulkanSDK/1.3.275.0/")
+
+target_link_libraries(Editor PRIVATE ${VULKAN_SDK}/Lib/vulkan-1.lib )
