@@ -5,6 +5,7 @@
 #include "Window.h"
 #include "Input.h"
 #include "Timer.h"
+#include "Renderer.h"
 // ---- Maths ----
 
 // ---- Rendering ----

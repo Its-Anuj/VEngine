@@ -46,7 +46,8 @@ namespace VEngine
         void SetVSync(bool state);
         void SetEventCallback(const std::function<void(Event &)> &Callback) { _Data.Callback = Callback; }
         GLFWwindow *GetRawHandle() const { return _Window; }
-        void* GetWin32Surface();
+        void *GetWin32Surface();
+        Vec2 GetFrameBufferSize() const;
 
     private:
         GLFWwindow *_Window = nullptr;

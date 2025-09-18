@@ -2,17 +2,12 @@
 
 struct VkDebugUtilsMessengerCreateInfoEXT;
 
+#include "RendererAPI.h"
+
 namespace VEngine
 {
     struct VulkanRendererData;
-
-    struct QueueFamilyIndices
-    {
-        std::optional<int> Graphics;
-        std::optional<int> Present;
-
-        inline bool Valid() { return Graphics.has_value() && Present.has_value(); }
-    };
+    struct QueueFamilyIndices;
 
     enum class VulkanSupportedVersions
     {
@@ -25,29 +20,39 @@ namespace VEngine
         VulkanSupportedVersions Version;
         std::vector<const char *> RequirerdExtensions;
         std::vector<const char *> RequirerdLayers;
+        std::vector<const char *> DeviceRequirerdExtensions;
         bool EnableValidationLayer = false;
         void *Win32Surface;
+        int FrameBufferWidth, FrameBufferHeight;
     };
 
-    class VulkanRenderer
+    class VulkanRenderer : public RendererAPI
     {
     public:
         VulkanRenderer();
         ~VulkanRenderer();
 
-        void Init(const VulkanRenderSpec &Spec);
-        void Terminate();
+        virtual void Init(void *Spec) override;
+        virtual void Terminate() override;
+        virtual void Render() override;
 
     private:
         void _CreateInstance();
         void _CreateSuitablePhysicalDevice();
         void _CreateSuitableLogicalDevice();
         void _CreateWindowSurface();
+        void _CreateSwapChain();
+        void _CreateImageViews();
+        void _CreateGraphicsPipeline();
+        void _CreateFrameBuffers();
+        void _CreateCommandPool();
+        void _CreateCommandBuffer();
+        void _RecordCommandBuffer(uint32_t imageIndex);
+        void _CreateSyncObject();
 
         void _PopulatePhysicalDevices();
         void _CheckSuitablePhysicalDevice();
-
-        QueueFamilyIndices _FindQueueFamilies(void *Device);
+        void _CreateRenderPass();
 
         void _CreateDebugMessenger();
         void _PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);

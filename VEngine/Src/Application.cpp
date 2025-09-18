@@ -18,20 +18,24 @@ namespace VEngine
         _Window.SetEventCallback(VENGINE_EVENT_CALLBACK_FN(OnEvent));
 
         Input::Init(_Window.GetRawHandle());
+        Renderer::Init(RenderAPIType::VULKAN, _Window);
 
         {
-            VENGINE_DEBUG_TIMER("Vulkan Init")
+            // VENGINE_DEBUG_TIMER("Vulkan Init")
 
-            VulkanRenderSpec Spec;
-            Spec.Name = "VEngine";
-            Spec.Version = VulkanSupportedVersions::V_1_0;
-            Spec.EnableValidationLayer = true;
+            // VulkanRenderSpec Spec;
+            // Spec.Name = "VEngine";
+            // Spec.Version = VulkanSupportedVersions::V_1_0;
+            // Spec.EnableValidationLayer = true;
 
-            Spec.RequirerdExtensions.push_back("VK_KHR_surface");
-            Spec.RequirerdExtensions.push_back("VK_KHR_win32_surface");
-            Spec.Win32Surface = _Window.GetWin32Surface();
+            // Spec.RequirerdExtensions.push_back("VK_KHR_surface");
+            // Spec.RequirerdExtensions.push_back("VK_KHR_win32_surface");
+            // Spec.Win32Surface = _Window.GetWin32Surface();
+            // auto fb = _Window.GetFrameBufferSize();
+            // Spec.FrameBufferWidth = _Window.GetFrameBufferSize().x;
+            // Spec.FrameBufferHeight = _Window.GetFrameBufferSize().y;
 
-            Renderer.Init(Spec);
+            // Renderer.Init(Spec);
         }
     }
 
@@ -43,6 +47,7 @@ namespace VEngine
                 layer->OnUpdate();
 
             _Window.SwapBuffers();
+            Renderer::Render();
         }
     }
 
@@ -51,7 +56,7 @@ namespace VEngine
         VENGINE_DEBUG_TIMER("Terminate!")
 
         _Stack.Flush();
-        Renderer.Terminate();
+        // Renderer::Terminate();
         Input::ShutDown();
         _Window.Terminate();
     }

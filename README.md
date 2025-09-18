@@ -1,41 +1,41 @@
 # VEngine
 
-VEngine is a modular C++ game engine project using [GLFW](VEngine/Libs/glfw/README.md) for windowing and input, and supports Vulkan rendering.
+VEngine is a modular C++ game engine project. Its architecture is divided into three main parts:
 
-## Project Structure
+## Engine Structure
+
+### 1. VEngineCore
+Handles all core engine functionality:
+- Windowing
+- Input
+- Events
+- Logging
+- Application lifecycle
+
+### 2. VEngineRenderAPI
+Responsible for rendering. It is further divided into:
+- **VEngineVulkan:** Vulkan-based rendering backend
+- **VEngineOpenGL:** OpenGL-based rendering backend
+
+### 3. VEngineExtensions
+Provides extended engine features:
+- Asset loading
+- Shader maps
+- Cameras
+- Other utilities
+
+## Project Layout
 
 ```
-.
-├── CMakeLists.txt
-├── LICENSE
-├── main.cpp
-├── README.md
-├── .gitignore
-├── .gitmodules
-├── .vscode/
-│   └── settings.json
-└── VEngine/
-    ├── CMakeLists.txt
-    ├── Libs/
-    │   └── glfw/
-    │       ├── CMakeLists.txt
-    │       ├── README.md
-    │       ├── docs/
-    │       ├── include/
-    │       ├── src/
-    │       └── ...
-    └── Src/
-        ├── Application.cpp/h
-        ├── Log.h
-        ├── Maths.h
-        ├── VEngine.h
-        ├── VePCH.h
-        ├── Events/
-        ├── Input/
-        ├── Layers/
-        ├── Profiling/
-        ├── Rendering/
-        └── Window/
+VEngine/
+├── Src/
+│   ├── Core/           # VEngineCore: windowing, input, events, etc.
+│   ├── Rendering/      # VEngineRenderAPI
+│   │   ├── Vulkan/     # VEngineVulkan
+│   │   └── OpenGL/     # VEngineOpenGL
+│   └── Extensions/     # VEngineExtensions: assets, cameras, etc.
+├── Libs/
+│   └── glfw/           # Windowing/input library
 ```
 
 ## Building
@@ -47,48 +47,32 @@ This project uses [CMake](https://cmake.org/) for configuration and building.
 - C++20 compatible compiler (MSVC, GCC, or Clang)
 - [CMake](https://cmake.org/download/)
 - Vulkan SDK (for Vulkan rendering)
-- On Linux: development packages for X11 and/or Wayland if building GLFW from source
+- OpenGL development libraries (for OpenGL backend)
 
 ### Build Steps
 
-1. **Configure the project:**
-
-   ```sh
-   cmake -S . -B build
-   ```
-
-2. **Build:**
-
-   ```sh
-   cmake --build build
-   ```
-
-3. **Run:**
-
-   The main executable will be in `build/bin/Editor.exe` (or equivalent for your platform).
-
-### Notes
-
-- GLFW is included as a subdirectory in `VEngine/Libs/glfw`.
-- Vulkan SDK path is set in the top-level `CMakeLists.txt`. Adjust as needed.
-- Output directories for libraries and executables are set in `CMakeLists.txt`.
+```sh
+cmake -S . -B build
+cmake --build build
+```
 
 ## Usage
 
-- The engine core is in [`VEngine/Src`](VEngine/Src).
-- The entry point is [`main.cpp`](main.cpp).
-- Logging macros are defined in [`VEngine/Src/Log.h`](VEngine/Src/Log.h).
-- Windowing and input are handled via GLFW.
+- The engine core is in `VEngine/Src/Core`.
+- Rendering backends are in `VEngine/Src/Rendering/Vulkan` and `VEngine/Src/Rendering/OpenGL`.
+- Extensions and utilities are in `VEngine/Src/Extensions`.
 
 ## License
 
 See [`LICENSE`](LICENSE) for details.
 
-## Contributing
-
-Pull requests and issues are welcome. See [`VEngine/Libs/glfw/README.md`](VEngine/Libs/glfw/README.md) for GLFW-specific contribution guidelines.
-
 ## References
 
 - [GLFW Documentation](https://www.glfw.org/docs/latest/)
 - [Vulkan SDK](https://vulkan.lunarg.com/)
+
+also include:
+libgcc_s_seh-1.dll
+libstdc++-6.dll
+
+if .dll errors comes 

@@ -1,7 +1,6 @@
 #include "VePCH.h"
 #include "Window.h"
 
-#define GLFW_INCLUDE_VULKAN
 #include <glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <glfw3native.h>
@@ -195,5 +194,13 @@ namespace VEngine
     void *Window::GetWin32Surface()
     {
         return (void*)glfwGetWin32Window(_Window);
+    }
+    
+    Vec2 Window::GetFrameBufferSize() const
+    {
+        int width, height;
+        glfwGetFramebufferSize(_Window, &width, &height);
+
+        return Vec2(width, height);
     }
 } // namespace VEngine

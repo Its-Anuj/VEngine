@@ -9,5 +9,6 @@
 #include "set"
 #include <memory>
 #include <functional>
+#include <optional>
 
 #include "Log.h"

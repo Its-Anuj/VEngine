@@ -13,6 +13,8 @@ CMakeUserPresets.json
 out
 .vscode
 CMakePresets.json
+libstdc++-6.dll
+libgcc_s_seh-1.dll
 
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
