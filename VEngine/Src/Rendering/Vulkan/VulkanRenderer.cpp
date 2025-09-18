@@ -4,6 +4,7 @@
 #include "VulkanDevice.h"
 #include <limits>
 #include "VulkanRenderer.h"
+#include "VulkanGraphicsPipeline.h"
 
 #define PRINTLN(x)      \
     {                   \
@@ -57,6 +58,13 @@ namespace VEngine
         std::vector<VkPresentModeKHR> presentModes;
     };
 
+    struct VVec2
+    {
+        float x, y;
+
+        VVec2(float px = 0.0f, float py = 0.0f) : x(px), y(py) {}
+    };
+
     struct VulkanRendererData
     {
         VkInstance Instance;
@@ -87,6 +95,9 @@ namespace VEngine
         VkFence inFlightFence;
 
         VkPipeline GraphicsPipeline;
+        VulkanShader Shader;
+        bool FrameBufferResized = false;
+        VVec2 FrameBufferSize;
     };
 
     QueueFamilyIndices _FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR Surface)
@@ -241,19 +252,26 @@ namespace VEngine
         }
     }
 
-    void ReadFile(const char *FilePath, std::vector<char> &CharData)
+    void VulkanRenderer::_CleanUpSwapChain()
     {
-        std::ifstream file(FilePath, std::ios::ate | std::ios::binary);
+        for (auto framebuffer : _Data->SwapChainFrameBuffers)
+            vkDestroyFramebuffer(_Data->ActiveDevice->GetHandle(), framebuffer, nullptr);
+        for (auto imageView : _Data->SwapChainImageViews)
+            vkDestroyImageView(_Data->ActiveDevice->GetHandle(), imageView, nullptr);
 
-        if (!file.is_open())
-            throw std::runtime_error("failed to open file!");
+        vkDestroySwapchainKHR(_Data->ActiveDevice->GetHandle(), _Data->SwapChain, nullptr);
 
-        size_t fileSize = (size_t)file.tellg();
-        CharData.resize(fileSize);
+        PRINTLN("[VULKAN]: SwapChain Cleaned!")
+    }
 
-        file.seekg(0);
-        file.read(CharData.data(), fileSize);
-        file.close();
+    void VulkanRenderer::_ReCreateSwapChain()
+    {
+        vkDeviceWaitIdle(_Data->ActiveDevice->GetHandle());
+        _CleanUpSwapChain();
+
+        _CreateSwapChain();
+        _CreateImageViews();
+        _CreateFrameBuffers();
     }
 
     VulkanRenderer::VulkanRenderer()
@@ -301,10 +319,22 @@ namespace VEngine
     void VulkanRenderer::Render()
     {
         vkWaitForFences(_Data->ActiveDevice->GetHandle(), 1, &_Data->inFlightFence, VK_TRUE, UINT64_MAX);
-        vkResetFences(_Data->ActiveDevice->GetHandle(), 1, &_Data->inFlightFence);
 
         uint32_t imageIndex;
-        vkAcquireNextImageKHR(_Data->ActiveDevice->GetHandle(), _Data->SwapChain, UINT64_MAX, _Data->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+        VkResult result = vkAcquireNextImageKHR(_Data->ActiveDevice->GetHandle(), _Data->SwapChain, UINT64_MAX, _Data->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            _ReCreateSwapChain();
+            return;
+        }
+        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+        {
+            throw std::runtime_error("failed to acquire swap chain image!");
+        }
+        // Only reset the fence if we are submitting work
+        vkResetFences(_Data->ActiveDevice->GetHandle(), 1, &_Data->inFlightFence);
+
         vkResetCommandBuffer(_Data->CommandBuffer, 0);
         _RecordCommandBuffer(imageIndex);
 
@@ -338,14 +368,30 @@ namespace VEngine
         presentInfo.pImageIndices = &imageIndex;
         presentInfo.pResults = nullptr; // Optional
 
-        vkQueuePresentKHR(_Data->ActiveDevice->GetQueues(QueueFamilies::PRESENT), &presentInfo);
+        result = vkQueuePresentKHR(_Data->ActiveDevice->GetQueues(QueueFamilies::PRESENT), &presentInfo);
 
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || _Data->FrameBufferResized)
+        {
+            _Data->FrameBufferResized = false;
+            _ReCreateSwapChain();
+        }
+        else if (result != VK_SUCCESS)
+            throw std::runtime_error("failed to present swap chain image!");
+
+    }
+
+    void VulkanRenderer::FrameBufferResize(int x, int y)
+    {
+        _Data->FrameBufferResized = true;
+        _Data->FrameBufferSize = VVec2(x, y);
     }
 
     void VulkanRenderer::Init(void *Spec)
     {
         _Data = new VulkanRendererData();
         _Spec = *(VulkanRenderSpec *)Spec;
+        _Data->FrameBufferSize.x = _Spec.FrameBufferWidth;
+        _Data->FrameBufferSize.y = _Spec.FrameBufferHeight;
 
         // For Swapchain
         _Spec.DeviceRequirerdExtensions.push_back("VK_KHR_swapchain");
@@ -477,7 +523,7 @@ namespace VEngine
 
         VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
         VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-        VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities, _Spec.FrameBufferWidth, _Spec.FrameBufferHeight);
+        VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities, _Data->FrameBufferSize.x, _Data->FrameBufferSize.y);
 
         uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
         if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
@@ -560,41 +606,16 @@ namespace VEngine
         }
     }
 
-    VkShaderModule createShaderModule(VkDevice device, const std::vector<char> &code)
-    {
-        VkShaderModuleCreateInfo createinfo;
-        createinfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createinfo.codeSize = code.size();
-        createinfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
-
-        VkShaderModule shaderModule;
-        if (vkCreateShaderModule(device, &createinfo, nullptr, &shaderModule) != VK_SUCCESS)
-            throw std::runtime_error("failed to create shader module!");
-        return shaderModule;
-    }
-
     void VulkanRenderer::_CreateGraphicsPipeline()
     {
-        std::vector<char> vertexsource, fragsource;
-        ReadFile("vert.spv", vertexsource);
-        ReadFile("frag.spv", fragsource);
+        VulkanShaderSpec ShaderSpec;
+        ShaderSpec.Name = "main";
+        ShaderSpec.Paths.push_back("vert.spv");
+        ShaderSpec.Paths.push_back("frag.spv");
+        ShaderSpec.UsingTypes.push_back(ShaderType::SHDAER_TYPE_VERTEX);
+        ShaderSpec.UsingTypes.push_back(ShaderType::SHDAER_TYPE_FRAGMENT);
+        _Data->Shader.Init(_Data->ActiveDevice->GetHandle(), ShaderSpec);
 
-        VkShaderModule vertShaderModule = createShaderModule(_Data->ActiveDevice->GetHandle(), vertexsource);
-        VkShaderModule fragShaderModule = createShaderModule(_Data->ActiveDevice->GetHandle(), fragsource);
-
-        VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
-        vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertShaderStageInfo.module = vertShaderModule;
-        vertShaderStageInfo.pName = "main";
-
-        VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-        fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragShaderStageInfo.module = fragShaderModule;
-        fragShaderStageInfo.pName = "main";
-
-        VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
         std::vector<VkDynamicState> dynamicStates = {
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR};
@@ -687,14 +708,15 @@ namespace VEngine
         pipelineLayoutInfo.pSetLayouts = nullptr;         // Optional
         pipelineLayoutInfo.pushConstantRangeCount = 0;    // Optional
         pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
-
+        
         if (vkCreatePipelineLayout(_Data->ActiveDevice->GetHandle(), &pipelineLayoutInfo, nullptr, &_Data->PipelineLayout) != VK_SUCCESS)
             throw std::runtime_error("failed to create pipeline layout!");
 
+        auto shaderStages = _Data->Shader.GetShaderStages();
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-        pipelineInfo.stageCount = 2;
-        pipelineInfo.pStages = shaderStages;
+        pipelineInfo.stageCount = shaderStages.size();
+        pipelineInfo.pStages = shaderStages.data();
         pipelineInfo.pVertexInputState = &vertexInputInfo;
         pipelineInfo.pInputAssemblyState = &inputAssembly;
         pipelineInfo.pViewportState = &viewportState;
@@ -714,8 +736,7 @@ namespace VEngine
 
         PRINTLN("[VULKAN]: Graphics Pipeline Created!")
 
-        vkDestroyShaderModule(_Data->ActiveDevice->GetHandle(), fragShaderModule, nullptr);
-        vkDestroyShaderModule(_Data->ActiveDevice->GetHandle(), vertShaderModule, nullptr);
+        _Data->Shader.Destroy(_Data->ActiveDevice->GetHandle());
     }
 
     void VulkanRenderer::_CreateFrameBuffers()

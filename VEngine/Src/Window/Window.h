@@ -54,4 +54,6 @@ namespace VEngine
 
         WindowFreePointer _Data;
     };
+
+    double GetWindowTime();
 } // namespace VEngine

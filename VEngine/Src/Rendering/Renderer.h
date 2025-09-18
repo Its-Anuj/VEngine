@@ -16,6 +16,7 @@ namespace VEngine
         static void Init(RenderAPIType Type, Window& window);
         static void Terminate();
         static void Render();
+        static void FrameBufferResize(int x, int y);
 
     private:
         RendererAPI *Api;

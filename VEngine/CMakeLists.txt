@@ -1,9 +1,10 @@
-add_library(VEngine Src/Layers/LayerStack.cpp Src/Application.cpp Src/Window/Window.cpp Src/Rendering/Renderer.cpp Src/Input/Input.cpp)
+add_library(VEngine Src/Layers/LayerStack.cpp Src/UUID/UUID.cpp Src/Application.cpp Src/Window/Window.cpp Src/Rendering/Renderer.cpp Src/Input/Input.cpp)
 
 add_subdirectory(Libs/glfw)
 add_subdirectory(Src/Rendering)
 
 include_directories("Src/Layers")
+include_directories("Src/UUID")
 include_directories("Src/Window")
 include_directories("Src/Events")
 include_directories("Src/Input")

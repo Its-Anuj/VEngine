@@ -17,6 +17,7 @@ namespace VEngine
         virtual void Init(void *Spec) = 0;
         virtual void Terminate() = 0;
         virtual void Render() = 0;
+        virtual void FrameBufferResize(int x, int y) = 0;
 
     private:
     };

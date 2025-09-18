@@ -35,6 +35,7 @@ namespace VEngine
         virtual void Init(void *Spec) override;
         virtual void Terminate() override;
         virtual void Render() override;
+        virtual void FrameBufferResize(int x, int y) override;
 
     private:
         void _CreateInstance();
@@ -49,6 +50,9 @@ namespace VEngine
         void _CreateCommandBuffer();
         void _RecordCommandBuffer(uint32_t imageIndex);
         void _CreateSyncObject();
+
+        void _CleanUpSwapChain();
+        void _ReCreateSwapChain();
 
         void _PopulatePhysicalDevices();
         void _CheckSuitablePhysicalDevice();

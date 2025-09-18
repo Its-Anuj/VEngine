@@ -23,5 +23,6 @@ namespace VEngine
     private:
         Window _Window;
         LayerStack _Stack;
+        double _LastTime = 0.0f;
     };
 } // namespace VEngine

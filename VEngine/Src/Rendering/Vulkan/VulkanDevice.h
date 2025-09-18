@@ -96,7 +96,7 @@ namespace VEngine
         // UUID _ID;
         // TODO: Make it use UUIDS
         VulkanDeviceSpec _Spec;
-        VkDevice _Device;
+        VkDevice _Device = nullptr;
         VkQueue _Queues[QueueFamilies::COUNT];
     };
 

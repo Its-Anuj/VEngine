@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Timestep.h"
 #include "Events.h"
 
 namespace VEngine
@@ -17,7 +18,7 @@ namespace VEngine
         }
 
         virtual void OnInit() = 0;
-        virtual void OnUpdate() = 0;
+        virtual void OnUpdate(TimeStep ts)= 0;
         virtual void OnTerminate() = 0;
         virtual void OnEvent(Event &e) = 0;
 

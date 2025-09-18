@@ -4,8 +4,17 @@
 #include <glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <glfw3native.h>
+#include <chrono>
 
 #include "Input.h"
+
+void VEngine_FrameBufferCallback(GLFWwindow *window, int width, int height)
+{
+    VEngine::WindowFreePointer *Data = (VEngine::WindowFreePointer *)glfwGetWindowUserPointer(window);
+
+    VEngine::FrameBufferResizeEvent e(width, height);
+    Data->Callback(e);
+}
 
 void VEngine_WindowCloseCallBack(GLFWwindow *window)
 {
@@ -177,6 +186,7 @@ namespace VEngine
         glfwSetMouseButtonCallback(_Window, Vengine_MouseButtonCallBack);
         glfwSetKeyCallback(_Window, VEngine_KeyCallBack);
         glfwSetScrollCallback(_Window, VEngine_MouseScrollCallBack);
+        glfwSetFramebufferSizeCallback(_Window, VEngine_FrameBufferCallback);
     }
 
     void Window::SetVSync(bool state)
@@ -193,14 +203,20 @@ namespace VEngine
 
     void *Window::GetWin32Surface()
     {
-        return (void*)glfwGetWin32Window(_Window);
+        return (void *)glfwGetWin32Window(_Window);
     }
-    
+
     Vec2 Window::GetFrameBufferSize() const
     {
         int width, height;
         glfwGetFramebufferSize(_Window, &width, &height);
 
         return Vec2(width, height);
+    }
+
+    double GetWindowTime()
+    {
+        // steady_clock is monotonic (won't go backward)
+        return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
     }
 } // namespace VEngine

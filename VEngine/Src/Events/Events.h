@@ -14,6 +14,7 @@ namespace VEngine
         MouseScroll,
         WindowClose,
         WindowResize,
+        FrameBufferResize
     };
 
     struct Event
@@ -116,6 +117,20 @@ namespace VEngine
         WindowResizeEvent(int newx, int newy) : x(newx), y(newy), Event(EventType::WindowResize) {}
 
         EVENT_MACRO_FUNC(EventType::WindowResize);
+
+        int GetX() const { return x; }
+        int GetY() const { return y; }
+
+    private:
+        int x, y;
+    };
+
+    struct FrameBufferResizeEvent : public Event
+    {
+    public:
+        FrameBufferResizeEvent(int newx, int newy) : x(newx), y(newy), Event(EventType::FrameBufferResize) {}
+
+        EVENT_MACRO_FUNC(EventType::FrameBufferResize);
 
         int GetX() const { return x; }
         int GetY() const { return y; }

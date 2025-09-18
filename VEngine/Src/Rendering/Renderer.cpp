@@ -38,4 +38,9 @@ namespace VEngine
     {
         Get().Api->Render();
     }
+    
+    void Renderer::FrameBufferResize(int x, int y)
+    {
+        Get().Api->FrameBufferResize(x,y);
+    }
 } // namespace VEngine

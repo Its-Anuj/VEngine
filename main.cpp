@@ -1,7 +1,6 @@
 #include "VePCH.h"
 #include "Application.h"
 
-
 namespace VEngine
 {
     class Editor : public Layer
@@ -19,7 +18,7 @@ namespace VEngine
         {
         }
 
-        void OnUpdate() override
+        void OnUpdate(TimeStep ts) override
         {
         }
 
