@@ -3,6 +3,9 @@ add_library(VEngine Src/Layers/LayerStack.cpp Src/UUID/UUID.cpp Src/Application.
 add_subdirectory(Libs/glfw)
 add_subdirectory(Src/Rendering)
 
+# Add glm subdir
+add_subdirectory(Libs/glm)
+
 include_directories("Src/Layers")
 include_directories("Src/UUID")
 include_directories("Src/Window")
@@ -13,6 +16,7 @@ include_directories("Src/Rendering/")
 include_directories("Src/Rendering/Vulkan")
 include_directories("Src/")
 include_directories("Libs/glfw/include/GLFW/")
+include_directories("Libs/glm/glm/")
 
 include_directories("C:/VulkanSDK/1.3.275.0/Include/vulkan")
 include_directories("C:/VulkanSDK/1.3.275.0/Include/")

@@ -8,6 +8,14 @@ namespace VEngine
 {
     struct VulkanRendererData;
     struct QueueFamilyIndices;
+    struct VulkanDevice;
+    
+    struct VulkanRuntimeData
+    {
+        VulkanDevice* ActiveDevice;
+    };
+        
+    VulkanRuntimeData* GetRuntimeData();
 
     enum class VulkanSupportedVersions
     {
@@ -48,6 +56,8 @@ namespace VEngine
         void _CreateFrameBuffers();
         void _CreateCommandPool();
         void _CreateCommandBuffer();
+        void _CreateVertexBuffer();
+        void _CreateIndexBuffer();
         void _RecordCommandBuffer(uint32_t imageIndex);
         void _CreateSyncObject();
 

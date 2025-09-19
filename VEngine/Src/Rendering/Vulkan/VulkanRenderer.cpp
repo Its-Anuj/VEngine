@@ -1,10 +1,13 @@
+#include <limits>
 #include "VeVPCH.h"
 #define VK_USE_PLATFORM_WIN32_KHR
 #include "vulkan.h"
 #include "VulkanDevice.h"
-#include <limits>
+#include "VulkanBuffers.h"
 #include "VulkanRenderer.h"
 #include "VulkanGraphicsPipeline.h"
+
+#include "glm/glm.hpp"
 
 #define PRINTLN(x)      \
     {                   \
@@ -63,7 +66,79 @@ namespace VEngine
         float x, y;
 
         VVec2(float px = 0.0f, float py = 0.0f) : x(px), y(py) {}
+
+        VVec2 operator+(const VVec2 &rhs) const { return VVec2(x + rhs.x, y + rhs.y); }
+        VVec2 operator-(const VVec2 &rhs) const { return VVec2(x - rhs.x, y - rhs.y); }
+        VVec2 operator*(const VVec2 &rhs) const { return VVec2(x * rhs.x, y * rhs.y); }
+        VVec2 operator/(const VVec2 &rhs) const { return VVec2(x / rhs.x, y / rhs.y); }
+
+        VVec2 operator*(float scalar) const { return VVec2(x * scalar, y * scalar); }
+        VVec2 operator/(float scalar) const { return VVec2(x / scalar, y / scalar); }
     };
+
+    struct VVec3
+    {
+        float x, y, z;
+
+        VVec3(float px = 0.0f, float py = 0.0f, float pz = 0.0f) : x(px), y(py), z(pz) {}
+
+        VVec3 operator+(const VVec3 &rhs) const { return VVec3(x + rhs.x, y + rhs.y, z + rhs.z); }
+        VVec3 operator-(const VVec3 &rhs) const { return VVec3(x - rhs.x, y - rhs.y, z - rhs.z); }
+        VVec3 operator*(const VVec3 &rhs) const { return VVec3(x * rhs.x, y * rhs.y, z * rhs.z); }
+        VVec3 operator/(const VVec3 &rhs) const { return VVec3(x / rhs.x, y / rhs.y, z / rhs.z); }
+
+        VVec3 operator*(float scalar) const { return VVec3(x * scalar, y * scalar, z * scalar); }
+        VVec3 operator/(float scalar) const { return VVec3(x / scalar, y / scalar, z / scalar); }
+    };
+
+    struct UniformBufferObject
+    {
+        glm::mat4 model;
+        glm::mat4 view;
+        glm::mat4 proj;
+    };
+
+    struct Vertex
+    {
+        VVec2 pos;
+        VVec3 color;
+
+        static VkVertexInputBindingDescription getBindingDescription()
+        {
+            VkVertexInputBindingDescription bindingDescription{};
+            bindingDescription.binding = 0;
+            bindingDescription.stride = sizeof(Vertex);
+            bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+            return bindingDescription;
+        }
+
+        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+        {
+            std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+
+            attributeDescriptions[0].binding = 0;
+            attributeDescriptions[0].location = 0;
+            attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+            attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+            attributeDescriptions[1].binding = 0;
+            attributeDescriptions[1].location = 1;
+            attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+            attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+            return attributeDescriptions;
+        }
+    };
+
+    const std::vector<Vertex> vertices = {
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+
+    const std::vector<uint16_t> indices = {
+        0, 1, 2, 2, 3, 0};
 
     struct VulkanRendererData
     {
@@ -83,6 +158,8 @@ namespace VEngine
         VkFormat SwapChainImageFormat;
         VkExtent2D SwapChainExtent;
         VkRenderPass RenderPass;
+        VulkanVertexBuffer VB;
+        VulkanIndexBuffer IB;
 
         // Abstract to classes (RAII)
         std::vector<VulkanPhysicalDevice> PhysicalDevices;
@@ -99,6 +176,8 @@ namespace VEngine
         bool FrameBufferResized = false;
         VVec2 FrameBufferSize;
     };
+
+    static VulkanRuntimeData *g_RuntimeData;
 
     QueueFamilyIndices _FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR Surface)
     {
@@ -228,7 +307,12 @@ namespace VEngine
         scissor.extent = _Data->SwapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+        VkBuffer vertexBuffers[] = {_Data->VB.GetHandle()};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(commandBuffer, _Data->IB.GetHandle(), 0, VK_INDEX_TYPE_UINT16);
+
+        vkCmdDrawIndexed(commandBuffer, _Data->IB.Size(), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
@@ -287,6 +371,9 @@ namespace VEngine
     {
         vkDeviceWaitIdle(_Data->ActiveDevice->GetHandle());
 
+        _Data->VB.Destroy(_Data->ActiveDevice->GetHandle());
+        _Data->IB.Destroy(_Data->ActiveDevice->GetHandle());
+
         vkDestroySemaphore(_Data->ActiveDevice->GetHandle(), _Data->imageAvailableSemaphore, nullptr);
         vkDestroySemaphore(_Data->ActiveDevice->GetHandle(), _Data->renderFinishedSemaphore, nullptr);
         vkDestroyFence(_Data->ActiveDevice->GetHandle(), _Data->inFlightFence, nullptr);
@@ -313,6 +400,9 @@ namespace VEngine
         vkDestroySurfaceKHR(_Data->Instance, _Data->Surface, nullptr);
 
         vkDestroyInstance(_Data->Instance, nullptr);
+
+        delete g_RuntimeData;
+        g_RuntimeData = nullptr;
         PRINTLN("Terminated vulkan!")
     }
 
@@ -377,7 +467,6 @@ namespace VEngine
         }
         else if (result != VK_SUCCESS)
             throw std::runtime_error("failed to present swap chain image!");
-
     }
 
     void VulkanRenderer::FrameBufferResize(int x, int y)
@@ -395,6 +484,7 @@ namespace VEngine
 
         // For Swapchain
         _Spec.DeviceRequirerdExtensions.push_back("VK_KHR_swapchain");
+        g_RuntimeData = new VulkanRuntimeData();
 
         _CreateInstance();
         _CreateDebugMessenger();
@@ -407,6 +497,8 @@ namespace VEngine
         _CreateGraphicsPipeline();
         _CreateFrameBuffers();
         _CreateCommandPool();
+        _CreateVertexBuffer();
+        _CreateIndexBuffer();
         _CreateCommandBuffer();
         _CreateSyncObject();
     }
@@ -503,6 +595,7 @@ namespace VEngine
         }
         _Data->ActiveDeviceIndex = _Data->ActivePhysicalDeviceIndex;
         _Data->ActiveDevice = &_Data->Devices[_Data->ActiveDeviceIndex];
+        g_RuntimeData->ActiveDevice = _Data->ActiveDevice;
     }
 
     void VulkanRenderer::_CreateWindowSurface()
@@ -608,13 +701,15 @@ namespace VEngine
 
     void VulkanRenderer::_CreateGraphicsPipeline()
     {
-        VulkanShaderSpec ShaderSpec;
+        ShaderSpec ShaderSpec;
         ShaderSpec.Name = "main";
         ShaderSpec.Paths.push_back("vert.spv");
         ShaderSpec.Paths.push_back("frag.spv");
         ShaderSpec.UsingTypes.push_back(ShaderType::SHDAER_TYPE_VERTEX);
         ShaderSpec.UsingTypes.push_back(ShaderType::SHDAER_TYPE_FRAGMENT);
-        _Data->Shader.Init(_Data->ActiveDevice->GetHandle(), ShaderSpec);
+        ShaderSpec.Attribs.push_back({"Position", ShaderVertexTypes::FLOAT2, 0, 0});
+        ShaderSpec.Attribs.push_back({"Color", ShaderVertexTypes::FLOAT3, 0, 1});
+        _Data->Shader.Init(ShaderSpec);
 
         std::vector<VkDynamicState> dynamicStates = {
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -625,12 +720,10 @@ namespace VEngine
         dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
         dynamicState.pDynamicStates = dynamicStates.data();
 
-        VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
-        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInputInfo.vertexBindingDescriptionCount = 0;
-        vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
-        vertexInputInfo.vertexAttributeDescriptionCount = 0;
-        vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+        std::vector<VkVertexInputAttributeDescription> attribdes;
+        VkVertexInputBindingDescription bindingDes;
+
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo = _Data->Shader.GetInfo(attribdes, bindingDes);
 
         VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
         inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -708,7 +801,7 @@ namespace VEngine
         pipelineLayoutInfo.pSetLayouts = nullptr;         // Optional
         pipelineLayoutInfo.pushConstantRangeCount = 0;    // Optional
         pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
-        
+
         if (vkCreatePipelineLayout(_Data->ActiveDevice->GetHandle(), &pipelineLayoutInfo, nullptr, &_Data->PipelineLayout) != VK_SUCCESS)
             throw std::runtime_error("failed to create pipeline layout!");
 
@@ -736,7 +829,7 @@ namespace VEngine
 
         PRINTLN("[VULKAN]: Graphics Pipeline Created!")
 
-        _Data->Shader.Destroy(_Data->ActiveDevice->GetHandle());
+        _Data->Shader.Destroy();
     }
 
     void VulkanRenderer::_CreateFrameBuffers()
@@ -786,6 +879,32 @@ namespace VEngine
         {
             throw std::runtime_error("failed to allocate command buffers!");
         }
+    }
+
+    uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
+    {
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+        {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            {
+                return i;
+            }
+        }
+
+        throw std::runtime_error("failed to find suitable memory type!");
+    }
+
+    void VulkanRenderer::_CreateVertexBuffer()
+    {
+        _Data->VB.Init(_Data->ActiveDevice->GetHandle(), _Data->ActivePhysicalDevice->GetHandle(), (void *)vertices.data(), 5 * vertices.size());
+    }
+
+    void VulkanRenderer::_CreateIndexBuffer()
+    {
+        _Data->IB.Init(_Data->ActiveDevice->GetHandle(), _Data->ActivePhysicalDevice->GetHandle(), (void *)indices.data(), indices.size(), VulkanIndexBufferType::UINT_16);
     }
 
     void VulkanRenderer::_PopulatePhysicalDevices()
@@ -978,5 +1097,10 @@ namespace VEngine
         }
 
         return true;
+    }
+
+    VulkanRuntimeData *GetRuntimeData()
+    {
+        return g_RuntimeData;
     }
 } // namespace VEngine
