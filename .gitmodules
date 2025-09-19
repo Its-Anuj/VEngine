@@ -1,3 +1,6 @@
 [submodule "VEngine/Libs/glfw"]
 	path = VEngine/Libs/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "VEngine/Libs/glm"]
+	path = VEngine/Libs/glm
+	url = https://github.com/g-truc/glm
