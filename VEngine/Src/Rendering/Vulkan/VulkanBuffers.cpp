@@ -2,20 +2,22 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include "vulkan.h"
 #include "VulkanBuffers.h"
+#include "VulkanDevice.h"
+#include "VulkanRenderer.h"
 
 namespace VEngine
 {
-    VkIndexType IndexBufferTypeToVk(VulkanIndexBufferType type)
+    VkIndexType IndexBufferTypeToVk(IndexBufferType type)
     {
         switch (type)
         {
-        case VulkanIndexBufferType::UINT_8 :
+        case IndexBufferType::UINT_8 :
             return VK_INDEX_TYPE_UINT16;
-        case VulkanIndexBufferType::UINT_16 :
+        case IndexBufferType::UINT_16 :
             return VK_INDEX_TYPE_UINT16;
-        case VulkanIndexBufferType::UINT_32 :
+        case IndexBufferType::UINT_32 :
             return VK_INDEX_TYPE_UINT16;
-        case VulkanIndexBufferType::UINT_64 :
+        case IndexBufferType::UINT_64 :
             return VK_INDEX_TYPE_UINT16;
         default:
             throw std::runtime_error("Format not supported!");
@@ -99,12 +101,13 @@ namespace VEngine
         vkUnmapMemory(device, _Memory);
     }
 
-    bool VulkanVertexBuffer::Init(VkDevice device, VkPhysicalDevice physicalDevice, void *VerticesData, int FloatCount)
+    bool VulkanVertexBuffer::Init(float *VerticesData, int FloatCount)
     {
+        auto device = GetRuntimeData()->ActiveDevice->GetHandle();
         VulkanBufferSpec Spec;
         Spec.Device = device;
-        Spec.PhysicalDevice = physicalDevice;
-        Spec.Data = VerticesData;
+        Spec.PhysicalDevice = GetRuntimeData()->ActivePhysicalDevice->GetHandle();
+        Spec.Data = (void*)VerticesData;
         Spec.SharingMode = VK_SHARING_MODE_EXCLUSIVE;
         Spec.UsageType = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         Spec.UsingProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
@@ -115,21 +118,24 @@ namespace VEngine
         return true;
     }
 
-    void VulkanVertexBuffer::Bind(VkDevice device)
+    void VulkanVertexBuffer::Bind()
     {
+        auto device = GetRuntimeData()->ActiveDevice->GetHandle();
         _Buffer.Bind(device);
     }
 
-    void VulkanVertexBuffer::Destroy(VkDevice device)
+    void VulkanVertexBuffer::Destroy()
     {
+        auto device = GetRuntimeData()->ActiveDevice->GetHandle();
         _Buffer.Destroy(device);
     }
 
-    bool VulkanIndexBuffer::Init(VkDevice device, VkPhysicalDevice physicalDevice, void *data, int Uintcount, VulkanIndexBufferType Type)
+    bool VulkanIndexBuffer::Init(void *data, int Uintcount, IndexBufferType Type)
     {
+        auto device = GetRuntimeData()->ActiveDevice->GetHandle();
         VulkanBufferSpec Spec;
         Spec.Device = device;
-        Spec.PhysicalDevice = physicalDevice;
+        Spec.PhysicalDevice = GetRuntimeData()->ActivePhysicalDevice->GetHandle();
         Spec.Data = data;
         Spec.SharingMode = VK_SHARING_MODE_EXCLUSIVE;
         Spec.UsageType = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
@@ -143,18 +149,20 @@ namespace VEngine
         return true;
     }
 
-    void VulkanIndexBuffer::Bind(VkDevice device)
+    void VulkanIndexBuffer::Bind()
     {
+        auto device = GetRuntimeData()->ActiveDevice->GetHandle();
         _Buffer.Bind(device);
     }
 
-    void VulkanIndexBuffer::Destroy(VkDevice device)
+    void VulkanIndexBuffer::Destroy()
     {
+        auto device = GetRuntimeData()->ActiveDevice->GetHandle();
         _Buffer.Destroy(device);
     }
     
     VkIndexType VulkanIndexBuffer::GetType()
     {
-        return VkIndexType();
+        return IndexBufferTypeToVk(_Type);
     }
 } // namespace VEngine

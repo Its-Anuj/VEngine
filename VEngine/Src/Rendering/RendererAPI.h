@@ -1,12 +1,24 @@
 #pragma once
 
+#include "Shaders.h"
+#include "Buffers.h"
+
 namespace VEngine
 {
+    struct RenderPassSpec
+    {
+        struct
+        {
+            float x, y, z, w;
+        } ClearColor;
+    };
+
     enum class RenderAPIType
     {
         VULKAN,
         OPENGL
     };
+    
     class RendererAPI
     {
     public:
@@ -18,6 +30,12 @@ namespace VEngine
         virtual void Terminate() = 0;
         virtual void Render() = 0;
         virtual void FrameBufferResize(int x, int y) = 0;
+
+        virtual void Submit(std::shared_ptr<VertexBuffer>& vb, std::shared_ptr<IndexBuffer>& ib) = 0;
+        virtual void Present() = 0;
+        virtual void Begin(const RenderPassSpec& Spec) = 0;
+        virtual void End() = 0;
+        virtual void Finish() = 0;
 
     private:
     };

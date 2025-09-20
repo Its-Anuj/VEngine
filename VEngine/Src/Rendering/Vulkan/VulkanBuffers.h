@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Buffers.h"
+
 namespace VEngine
 {
     struct VulkanBufferSpec
@@ -31,15 +33,15 @@ namespace VEngine
         VkDeviceMemory _Memory;
     };
 
-    class VulkanVertexBuffer
+    class VulkanVertexBuffer : public VertexBuffer
     {
     public:
         VulkanVertexBuffer() {}
         ~VulkanVertexBuffer() {}
 
-        bool Init(VkDevice device, VkPhysicalDevice physicalDevice, void *data, int FloatCount);
-        void Bind(VkDevice device);
-        void Destroy(VkDevice device);
+        bool Init(float *data, int FloatCount) override;
+        void Bind() override;
+        void Destroy() override;
 
         VkBuffer GetHandle() { return _Buffer.GetHandle(); }
 
@@ -47,25 +49,17 @@ namespace VEngine
         VulkanBuffer _Buffer;
     };
 
-    enum class VulkanIndexBufferType
-    {
-        UINT_8,
-            UINT_16,
-            UINT_32,
-            UINT_64,
-    };
-
-    class VulkanIndexBuffer
+    class VulkanIndexBuffer : public IndexBuffer
     {
     public:
         VulkanIndexBuffer() {}
         ~VulkanIndexBuffer() {}
 
-        bool Init(VkDevice device, VkPhysicalDevice physicalDevice, void *data, int Uintcount, VulkanIndexBufferType Type);
-        void Bind(VkDevice device);
-        void Destroy(VkDevice device);
+        bool Init(void *data, int Uintcount, IndexBufferType Type) override;
+        void Bind() override;
+        void Destroy() override;
 
-        uint32_t Size() const { return _Size; }
+        uint32_t Size() const  override{ return _Size; }
         VkIndexType GetType();
 
         VkBuffer GetHandle() { return _Buffer.GetHandle(); }
@@ -73,6 +67,6 @@ namespace VEngine
     private:
         VulkanBuffer _Buffer;
         uint32_t _Size = 0;
-        VulkanIndexBufferType _Type; 
+        IndexBufferType _Type;
     };
 } // namespace VEngine

@@ -4,13 +4,20 @@
 
 namespace VEngine
 {
+    struct ApplicationSpec
+    {
+        std::string Name;
+        Vec2 Dimensions;
+        bool VSync = false;
+    };
+
     class Application
     {
     public:
         Application() {}
         ~Application() {}
 
-        void OnInit();
+        void OnInit(const ApplicationSpec& InitSpec);
 
         void OnUpdate();
 

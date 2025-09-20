@@ -39,7 +39,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     message("[ENGINE] Debug build enabled")
 endif()
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_definitions(Simulation PRIVATE VENGINE_RELEASE_BUILD)
+    target_compile_definitions(Editor PRIVATE VENGINE_RELEASE_BUILD)
     message("[ENGINE] Release build enabled")
 endif()
  

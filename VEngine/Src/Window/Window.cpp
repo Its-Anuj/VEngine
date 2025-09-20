@@ -172,7 +172,7 @@ namespace VEngine
         _Data.Data = Data;
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-        _Window = glfwCreateWindow(800, 600, "VEditor", NULL, NULL);
+        _Window = glfwCreateWindow(Data.Dimensions.x, Data.Dimensions.y, Data.Name.c_str(), NULL, NULL);
         glfwMakeContextCurrent(_Window);
         VENGINE_CORE_PRINTLN("[WINDOW] Created: " << _Data.Data.Name << " with, " << _Data.Data.Dimensions.x << "x" << _Data.Data.Dimensions.y)
 

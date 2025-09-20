@@ -1,5 +1,7 @@
 #pragma once
 
+#include "UUID/UUID.h"
+
 namespace VEngine
 {
     enum ShaderType
@@ -51,6 +53,10 @@ namespace VEngine
         virtual bool Init(const ShaderSpec &Spec) = 0;
         virtual void Destroy() = 0;
 
+        const UUID &ID() const { return _ID; }
+        static std::shared_ptr<Shader> Create(const ShaderSpec &Spec);
+
     private:
+        UUID _ID;
     };
 } // namespace VEngine

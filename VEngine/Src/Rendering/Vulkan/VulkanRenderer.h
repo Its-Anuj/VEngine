@@ -9,10 +9,12 @@ namespace VEngine
     struct VulkanRendererData;
     struct QueueFamilyIndices;
     struct VulkanDevice;
+    struct VulkanPhysicalDevice;
     
     struct VulkanRuntimeData
     {
         VulkanDevice* ActiveDevice;
+        VulkanPhysicalDevice* ActivePhysicalDevice;
     };
         
     VulkanRuntimeData* GetRuntimeData();
@@ -45,6 +47,13 @@ namespace VEngine
         virtual void Render() override;
         virtual void FrameBufferResize(int x, int y) override;
 
+        virtual void Begin(const RenderPassSpec& Spec) override;
+        virtual void End() override;
+        virtual void Submit(std::shared_ptr<VertexBuffer>& vb, std::shared_ptr<IndexBuffer>& ib) override;
+        
+        virtual void Present() override;
+
+        virtual void Finish() override;
     private:
         void _CreateInstance();
         void _CreateSuitablePhysicalDevice();
@@ -56,9 +65,6 @@ namespace VEngine
         void _CreateFrameBuffers();
         void _CreateCommandPool();
         void _CreateCommandBuffer();
-        void _CreateVertexBuffer();
-        void _CreateIndexBuffer();
-        void _RecordCommandBuffer(uint32_t imageIndex);
         void _CreateSyncObject();
 
         void _CleanUpSwapChain();

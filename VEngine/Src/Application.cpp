@@ -5,14 +5,14 @@ namespace VEngine
 {
 #define VENGINE_EVENT_CALLBACK_FN(x) {std::bind(&Application::x, this, std::placeholders::_1)}
 
-    void Application::OnInit()
+    void Application::OnInit(const ApplicationSpec &InitSpec)
     {
         VENGINE_DEBUG_TIMER("Initialization!")
 
         VEngine::WindowData Data;
-        Data.Name = "VEditor";
-        Data.Dimensions = VEngine::Vec2(800, 600);
-        Data.VSync = true;
+        Data.Name = InitSpec.Name;
+        Data.Dimensions = InitSpec.Dimensions;
+        Data.VSync = InitSpec.VSync;
 
         _Window.Init(Data);
         _Window.SetEventCallback(VENGINE_EVENT_CALLBACK_FN(OnEvent));
@@ -21,7 +21,11 @@ namespace VEngine
 
         {
             VENGINE_DEBUG_TIMER("Vulkan Init")
-            Renderer::Init(RenderAPIType::VULKAN, _Window);
+            RendererInitSpec RenderSpec;
+            RenderSpec.Type = RenderAPIType::VULKAN;
+            RenderSpec.window = &_Window;
+            RenderSpec.FramesInFlightCount = 2;
+            Renderer::Init(RenderSpec);
         }
     }
 
@@ -38,16 +42,16 @@ namespace VEngine
                 layer->OnUpdate(ts);
 
             _Window.SwapBuffers();
-            Renderer::Render();
         }
     }
 
     void Application::OnTerminate()
     {
         VENGINE_DEBUG_TIMER("Terminate!")
+        Renderer::Finish();
 
         _Stack.Flush();
-        // Renderer::Terminate();
+        Renderer::Terminate();
         Input::ShutDown();
         _Window.Terminate();
     }

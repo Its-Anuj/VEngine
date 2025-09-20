@@ -54,43 +54,6 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 namespace VEngine
 {
-    struct SwapChainSupportDetails
-    {
-        VkSurfaceCapabilitiesKHR capabilities;
-        std::vector<VkSurfaceFormatKHR> formats;
-        std::vector<VkPresentModeKHR> presentModes;
-    };
-
-    struct VVec2
-    {
-        float x, y;
-
-        VVec2(float px = 0.0f, float py = 0.0f) : x(px), y(py) {}
-
-        VVec2 operator+(const VVec2 &rhs) const { return VVec2(x + rhs.x, y + rhs.y); }
-        VVec2 operator-(const VVec2 &rhs) const { return VVec2(x - rhs.x, y - rhs.y); }
-        VVec2 operator*(const VVec2 &rhs) const { return VVec2(x * rhs.x, y * rhs.y); }
-        VVec2 operator/(const VVec2 &rhs) const { return VVec2(x / rhs.x, y / rhs.y); }
-
-        VVec2 operator*(float scalar) const { return VVec2(x * scalar, y * scalar); }
-        VVec2 operator/(float scalar) const { return VVec2(x / scalar, y / scalar); }
-    };
-
-    struct VVec3
-    {
-        float x, y, z;
-
-        VVec3(float px = 0.0f, float py = 0.0f, float pz = 0.0f) : x(px), y(py), z(pz) {}
-
-        VVec3 operator+(const VVec3 &rhs) const { return VVec3(x + rhs.x, y + rhs.y, z + rhs.z); }
-        VVec3 operator-(const VVec3 &rhs) const { return VVec3(x - rhs.x, y - rhs.y, z - rhs.z); }
-        VVec3 operator*(const VVec3 &rhs) const { return VVec3(x * rhs.x, y * rhs.y, z * rhs.z); }
-        VVec3 operator/(const VVec3 &rhs) const { return VVec3(x / rhs.x, y / rhs.y, z / rhs.z); }
-
-        VVec3 operator*(float scalar) const { return VVec3(x * scalar, y * scalar, z * scalar); }
-        VVec3 operator/(float scalar) const { return VVec3(x / scalar, y / scalar, z / scalar); }
-    };
-
     struct UniformBufferObject
     {
         glm::mat4 model;
@@ -98,47 +61,12 @@ namespace VEngine
         glm::mat4 proj;
     };
 
-    struct Vertex
+    struct SwapChainSupportDetails
     {
-        VVec2 pos;
-        VVec3 color;
-
-        static VkVertexInputBindingDescription getBindingDescription()
-        {
-            VkVertexInputBindingDescription bindingDescription{};
-            bindingDescription.binding = 0;
-            bindingDescription.stride = sizeof(Vertex);
-            bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-            return bindingDescription;
-        }
-
-        static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
-        {
-            std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
-
-            attributeDescriptions[0].binding = 0;
-            attributeDescriptions[0].location = 0;
-            attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-            attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-            attributeDescriptions[1].binding = 0;
-            attributeDescriptions[1].location = 1;
-            attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-            attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-            return attributeDescriptions;
-        }
+        VkSurfaceCapabilitiesKHR capabilities;
+        std::vector<VkSurfaceFormatKHR> formats;
+        std::vector<VkPresentModeKHR> presentModes;
     };
-
-    const std::vector<Vertex> vertices = {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
-
-    const std::vector<uint16_t> indices = {
-        0, 1, 2, 2, 3, 0};
 
     struct VulkanRendererData
     {
@@ -158,8 +86,6 @@ namespace VEngine
         VkFormat SwapChainImageFormat;
         VkExtent2D SwapChainExtent;
         VkRenderPass RenderPass;
-        VulkanVertexBuffer VB;
-        VulkanIndexBuffer IB;
 
         // Abstract to classes (RAII)
         std::vector<VulkanPhysicalDevice> PhysicalDevices;
@@ -174,7 +100,11 @@ namespace VEngine
         VkPipeline GraphicsPipeline;
         VulkanShader Shader;
         bool FrameBufferResized = false;
-        VVec2 FrameBufferSize;
+        struct
+        {
+            float x,y;
+        } FrameBufferSize;
+        uint32_t CurrentImageIndex = 0;
     };
 
     static VulkanRuntimeData *g_RuntimeData;
@@ -268,8 +198,26 @@ namespace VEngine
         }
     }
 
-    void VulkanRenderer::_RecordCommandBuffer(uint32_t imageIndex)
+    void VulkanRenderer::Begin(const RenderPassSpec &Spec)
     {
+        vkWaitForFences(_Data->ActiveDevice->GetHandle(), 1, &_Data->inFlightFence, VK_TRUE, UINT64_MAX);
+
+        VkResult result = vkAcquireNextImageKHR(_Data->ActiveDevice->GetHandle(), _Data->SwapChain, UINT64_MAX, _Data->imageAvailableSemaphore, VK_NULL_HANDLE, &_Data->CurrentImageIndex);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            _ReCreateSwapChain();
+            return;
+        }
+        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+        {
+            throw std::runtime_error("failed to acquire swap chain image!");
+        }
+        // Only reset the fence if we are submitting work
+        vkResetFences(_Data->ActiveDevice->GetHandle(), 1, &_Data->inFlightFence);
+
+        vkResetCommandBuffer(_Data->CommandBuffer, 0);
+
         auto commandBuffer = _Data->CommandBuffer;
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -282,17 +230,15 @@ namespace VEngine
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = _Data->RenderPass;
-        renderPassInfo.framebuffer = _Data->SwapChainFrameBuffers[imageIndex];
+        renderPassInfo.framebuffer = _Data->SwapChainFrameBuffers[_Data->CurrentImageIndex];
         renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = _Data->SwapChainExtent;
 
-        VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+        VkClearValue clearColor = {{{Spec.ClearColor.x, Spec.ClearColor.y, Spec.ClearColor.z, Spec.ClearColor.w}}};
         renderPassInfo.clearValueCount = 1;
         renderPassInfo.pClearValues = &clearColor;
 
         vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _Data->GraphicsPipeline);
-
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
@@ -306,18 +252,31 @@ namespace VEngine
         scissor.offset = {0, 0};
         scissor.extent = _Data->SwapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+    }
 
-        VkBuffer vertexBuffers[] = {_Data->VB.GetHandle()};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, _Data->IB.GetHandle(), 0, VK_INDEX_TYPE_UINT16);
-
-        vkCmdDrawIndexed(commandBuffer, _Data->IB.Size(), 1, 0, 0, 0);
-
+    void VulkanRenderer::End()
+    {
+        auto commandBuffer = _Data->CommandBuffer;
         vkCmdEndRenderPass(commandBuffer);
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
             throw std::runtime_error("failed to record command buffer!");
+    }
+
+    void VulkanRenderer::Submit(std::shared_ptr<VertexBuffer> &vb, std::shared_ptr<IndexBuffer> &ib)
+    {
+        auto VulkanVB = std::static_pointer_cast<VulkanVertexBuffer>(vb);
+        auto VulkanIB = std::static_pointer_cast<VulkanIndexBuffer>(ib);
+
+        auto commandBuffer = _Data->CommandBuffer;
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _Data->GraphicsPipeline);
+
+        VkBuffer vertexBuffers[] = {VulkanVB->GetHandle()};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(commandBuffer, VulkanIB->GetHandle(), 0, VulkanIB->GetType());
+
+        vkCmdDrawIndexed(commandBuffer, VulkanIB->Size(), 1, 0, 0, 0);
     }
 
     void VulkanRenderer::_CreateSyncObject()
@@ -369,11 +328,6 @@ namespace VEngine
 
     void VulkanRenderer::Terminate()
     {
-        vkDeviceWaitIdle(_Data->ActiveDevice->GetHandle());
-
-        _Data->VB.Destroy(_Data->ActiveDevice->GetHandle());
-        _Data->IB.Destroy(_Data->ActiveDevice->GetHandle());
-
         vkDestroySemaphore(_Data->ActiveDevice->GetHandle(), _Data->imageAvailableSemaphore, nullptr);
         vkDestroySemaphore(_Data->ActiveDevice->GetHandle(), _Data->renderFinishedSemaphore, nullptr);
         vkDestroyFence(_Data->ActiveDevice->GetHandle(), _Data->inFlightFence, nullptr);
@@ -406,28 +360,40 @@ namespace VEngine
         PRINTLN("Terminated vulkan!")
     }
 
+    void VulkanRenderer::Present()
+    {
+        VkSemaphore signalSemaphores[] = {_Data->renderFinishedSemaphore};
+
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+
+        VkSwapchainKHR swapChains[] = {_Data->SwapChain};
+        presentInfo.swapchainCount = 1;
+        presentInfo.pSwapchains = swapChains;
+        presentInfo.pImageIndices = &_Data->CurrentImageIndex;
+        presentInfo.pResults = nullptr; // Optional
+
+        auto result = vkQueuePresentKHR(_Data->ActiveDevice->GetQueues(QueueFamilies::PRESENT), &presentInfo);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || _Data->FrameBufferResized)
+        {
+            _Data->FrameBufferResized = false;
+            _ReCreateSwapChain();
+        }
+        else if (result != VK_SUCCESS)
+            throw std::runtime_error("failed to present swap chain image!");
+    }
+
+    void VulkanRenderer::Finish()
+    {
+        vkDeviceWaitIdle(_Data->ActiveDevice->GetHandle());
+    }
+
     void VulkanRenderer::Render()
     {
-        vkWaitForFences(_Data->ActiveDevice->GetHandle(), 1, &_Data->inFlightFence, VK_TRUE, UINT64_MAX);
-
-        uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(_Data->ActiveDevice->GetHandle(), _Data->SwapChain, UINT64_MAX, _Data->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR)
-        {
-            _ReCreateSwapChain();
-            return;
-        }
-        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
-        {
-            throw std::runtime_error("failed to acquire swap chain image!");
-        }
-        // Only reset the fence if we are submitting work
-        vkResetFences(_Data->ActiveDevice->GetHandle(), 1, &_Data->inFlightFence);
-
-        vkResetCommandBuffer(_Data->CommandBuffer, 0);
-        _RecordCommandBuffer(imageIndex);
-
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -445,34 +411,12 @@ namespace VEngine
 
         if (vkQueueSubmit(_Data->ActiveDevice->GetQueues(QueueFamilies::GRAPHICS), 1, &submitInfo, _Data->inFlightFence) != VK_SUCCESS)
             throw std::runtime_error("failed to submit draw command buffer!");
-
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
-
-        VkSwapchainKHR swapChains[] = {_Data->SwapChain};
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = swapChains;
-        presentInfo.pImageIndices = &imageIndex;
-        presentInfo.pResults = nullptr; // Optional
-
-        result = vkQueuePresentKHR(_Data->ActiveDevice->GetQueues(QueueFamilies::PRESENT), &presentInfo);
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || _Data->FrameBufferResized)
-        {
-            _Data->FrameBufferResized = false;
-            _ReCreateSwapChain();
-        }
-        else if (result != VK_SUCCESS)
-            throw std::runtime_error("failed to present swap chain image!");
     }
 
     void VulkanRenderer::FrameBufferResize(int x, int y)
     {
         _Data->FrameBufferResized = true;
-        _Data->FrameBufferSize = VVec2(x, y);
+        _Data->FrameBufferSize = {(float)x,(float)y};
     }
 
     void VulkanRenderer::Init(void *Spec)
@@ -497,8 +441,6 @@ namespace VEngine
         _CreateGraphicsPipeline();
         _CreateFrameBuffers();
         _CreateCommandPool();
-        _CreateVertexBuffer();
-        _CreateIndexBuffer();
         _CreateCommandBuffer();
         _CreateSyncObject();
     }
@@ -575,6 +517,7 @@ namespace VEngine
     {
         _PopulatePhysicalDevices();
         _CheckSuitablePhysicalDevice();
+        g_RuntimeData->ActivePhysicalDevice = _Data->ActivePhysicalDevice;
     }
 
     void VulkanRenderer::_CreateSuitableLogicalDevice()
@@ -895,16 +838,6 @@ namespace VEngine
         }
 
         throw std::runtime_error("failed to find suitable memory type!");
-    }
-
-    void VulkanRenderer::_CreateVertexBuffer()
-    {
-        _Data->VB.Init(_Data->ActiveDevice->GetHandle(), _Data->ActivePhysicalDevice->GetHandle(), (void *)vertices.data(), 5 * vertices.size());
-    }
-
-    void VulkanRenderer::_CreateIndexBuffer()
-    {
-        _Data->IB.Init(_Data->ActiveDevice->GetHandle(), _Data->ActivePhysicalDevice->GetHandle(), (void *)indices.data(), indices.size(), VulkanIndexBufferType::UINT_16);
     }
 
     void VulkanRenderer::_PopulatePhysicalDevices()
