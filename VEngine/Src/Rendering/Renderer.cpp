@@ -12,7 +12,7 @@ namespace VEngine
 {
     static RenderAPIType _API;
 
-    void Renderer::Init(const RendererInitSpec& RenderSpec)
+    void Renderer::Init(const RendererInitSpec &RenderSpec)
     {
         if (RenderSpec.Type == RenderAPIType::VULKAN)
         {
@@ -29,6 +29,7 @@ namespace VEngine
             auto fb = RenderSpec.window->GetFrameBufferSize();
             Spec.FrameBufferWidth = RenderSpec.window->GetFrameBufferSize().x;
             Spec.FrameBufferHeight = RenderSpec.window->GetFrameBufferSize().y;
+            Spec.FramesInFlightCount = RenderSpec.FramesInFlightCount;
 
             Get().Api->Init((void *)&Spec);
         }
@@ -80,22 +81,22 @@ namespace VEngine
         Get().Api->Finish();
     }
 
-    std::shared_ptr<VertexBuffer> VEngine::VertexBuffer::Create(float *vertices, uint32_t size)
+    std::shared_ptr<VertexBuffer> VEngine::VertexBuffer::Create(float *vertices, uint32_t size, BufferTypes BType)
     {
         if (_API == RenderAPIType::VULKAN)
         {
             std::shared_ptr<VulkanVertexBuffer> VB = std::make_shared<VulkanVertexBuffer>();
-            VB->Init(vertices, size);
+            VB->Init(vertices, size, BType);
             return VB;
         }
     }
-    
-    std::shared_ptr<IndexBuffer> VEngine::IndexBuffer::Create(void *data, int Uintcount, IndexBufferType Type)
+
+    std::shared_ptr<IndexBuffer> VEngine::IndexBuffer::Create(void *data, int Uintcount, IndexBufferType Type, BufferTypes BType)
     {
         if (_API == RenderAPIType::VULKAN)
         {
             std::shared_ptr<VulkanIndexBuffer> IB = std::make_shared<VulkanIndexBuffer>();
-            IB->Init(data, Uintcount, Type);
+            IB->Init(data, Uintcount, Type, BType);
             return IB;
         }
     }

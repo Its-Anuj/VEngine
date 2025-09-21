@@ -13,6 +13,7 @@ namespace VEngine
         VkBufferUsageFlags UsageType;
         VkSharingMode SharingMode;
         VkMemoryPropertyFlags UsingProperties;
+        BufferTypes Type;
     };
 
     class VulkanBuffer
@@ -21,7 +22,7 @@ namespace VEngine
         VulkanBuffer() {}
         ~VulkanBuffer() {}
 
-        bool Init(const VulkanBufferSpec &Spec);
+        bool Init(VulkanBufferSpec &Spec);
         void Bind(VkDevice device);
         void Destroy(VkDevice device);
         void MapMemory(VkDevice device, int Offset, int Size, void *Data);
@@ -30,6 +31,7 @@ namespace VEngine
 
     private:
         VkBuffer _Buffer;
+        void* _MappedData = nullptr;
         VkDeviceMemory _Memory;
     };
 
@@ -39,7 +41,7 @@ namespace VEngine
         VulkanVertexBuffer() {}
         ~VulkanVertexBuffer() {}
 
-        bool Init(float *data, int FloatCount) override;
+        bool Init(float *data, int FloatCount, BufferTypes Type) override;
         void Bind() override;
         void Destroy() override;
 
@@ -55,7 +57,7 @@ namespace VEngine
         VulkanIndexBuffer() {}
         ~VulkanIndexBuffer() {}
 
-        bool Init(void *data, int Uintcount, IndexBufferType Type) override;
+        bool Init(void *data, int Uintcount, IndexBufferType Type, BufferTypes BType) override;
         void Bind() override;
         void Destroy() override;
 
@@ -68,5 +70,23 @@ namespace VEngine
         VulkanBuffer _Buffer;
         uint32_t _Size = 0;
         IndexBufferType _Type;
+    };
+
+    class VulkanUniformBuffer
+    {
+    public:
+        VulkanUniformBuffer() {}
+        ~VulkanUniformBuffer() {}
+
+        bool Init(void *data, int SizeinBytes, BufferTypes Type);
+        void Destroy() ;
+        void Bind();
+        void* GetMappedPointer() {return _MappedData;}
+
+        VkBuffer GetHandle() { return _Buffer.GetHandle(); }
+
+    private:
+        VulkanBuffer _Buffer;
+        void* _MappedData = nullptr;
     };
 } // namespace VEngine

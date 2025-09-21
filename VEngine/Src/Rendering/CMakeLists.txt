@@ -1,4 +1,4 @@
-add_library(VEngineVulkan Vulkan/VulkanRenderer.cpp Vulkan/VulkanDevice.cpp Vulkan/VulkanGraphicsPipeline.cpp Vulkan/VulkanBuffers.cpp)
+add_library(VEngineVulkan Vulkan/VulkanRenderer.cpp Vulkan/VulkanGraphicsPipeline.cpp)
 
 include_directories("C:/VulkanSDK/1.3.275.0/Include/vulkan")
 include_directories("C:/VulkanSDK/1.3.275.0/Include/")

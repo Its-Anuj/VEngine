@@ -10,14 +10,21 @@ namespace VEngine
     struct QueueFamilyIndices;
     struct VulkanDevice;
     struct VulkanPhysicalDevice;
-    
+    struct VulkanSwapChain;
+
     struct VulkanRuntimeData
     {
-        VulkanDevice* ActiveDevice;
-        VulkanPhysicalDevice* ActivePhysicalDevice;
+        VulkanDevice *ActiveDevice;
+        VulkanPhysicalDevice *ActivePhysicalDevice;
+        struct
+        {
+            float x, y;
+        } FrameBufferSize;
+        VkSurfaceKHR *Surface;
+        VulkanSwapChain *SwapChain;
     };
-        
-    VulkanRuntimeData* GetRuntimeData();
+
+    VulkanRuntimeData *GetRuntimeData();
 
     enum class VulkanSupportedVersions
     {
@@ -34,6 +41,7 @@ namespace VEngine
         bool EnableValidationLayer = false;
         void *Win32Surface;
         int FrameBufferWidth, FrameBufferHeight;
+        int FramesInFlightCount;
     };
 
     class VulkanRenderer : public RendererAPI
@@ -47,26 +55,31 @@ namespace VEngine
         virtual void Render() override;
         virtual void FrameBufferResize(int x, int y) override;
 
-        virtual void Begin(const RenderPassSpec& Spec) override;
+        virtual void Begin(const RenderPassSpec &Spec) override;
         virtual void End() override;
-        virtual void Submit(std::shared_ptr<VertexBuffer>& vb, std::shared_ptr<IndexBuffer>& ib) override;
-        
+        virtual void Submit(std::shared_ptr<VertexBuffer> &vb, std::shared_ptr<IndexBuffer> &ib) override;
+
         virtual void Present() override;
 
         virtual void Finish() override;
+
     private:
         void _CreateInstance();
         void _CreateSuitablePhysicalDevice();
         void _CreateSuitableLogicalDevice();
         void _CreateWindowSurface();
         void _CreateSwapChain();
-        void _CreateImageViews();
+        void _CreateDescriptorSetLayout();
+        void _CreateDescriptorSets();
+        void _CreateDescriptorPool();
         void _CreateGraphicsPipeline();
         void _CreateFrameBuffers();
+        void _CreateUniformBuffers();
         void _CreateCommandPool();
         void _CreateCommandBuffer();
         void _CreateSyncObject();
 
+        void _UpdateUniformBuffer(uint32_t currentImage);
         void _CleanUpSwapChain();
         void _ReCreateSwapChain();
 

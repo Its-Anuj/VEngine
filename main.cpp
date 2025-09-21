@@ -28,40 +28,20 @@ namespace VEngine
                 {{-0.25f, -0.25f}, {0.0f, 1.0f, 0.0f}}, // 1: bottom-right, green
                 {{-0.25f, 0.25f}, {0.0f, 0.0f, 1.0f}},  // 2: top-right, blue
                 {{-0.75f, 0.25f}, {1.0f, 1.0f, 0.0f}},  // 3: top-left, yellow
-
-                // Right square (center x=0.5)
-                {{0.25f, -0.25f}, {1.0f, 0.0f, 1.0f}}, // 4: bottom-left, magenta
-                {{0.75f, -0.25f}, {0.0f, 1.0f, 1.0f}}, // 5: bottom-right, cyan
-                {{0.75f, 0.25f}, {1.0f, 1.0f, 1.0f}},  // 6: top-right, white
-                {{0.25f, 0.25f}, {0.5f, 0.5f, 0.5f}}   // 7: top-left, gray
-            };
-
-            const std::vector<Vertex> ChangingVertices = {
-                // Top quad (centered at y = +0.6)
-                {{-0.25f, 0.35f}, {1.0f, 0.0f, 0.0f}}, // 0: bottom-left
-                {{0.25f, 0.35f}, {0.0f, 1.0f, 0.0f}},  // 1: bottom-right
-                {{0.25f, 0.85f}, {0.0f, 0.0f, 1.0f}},  // 2: top-right
-                {{-0.25f, 0.85f}, {1.0f, 1.0f, 0.0f}}, // 3: top-left
-
-                // Bottom quad (centered at y = -0.6)
-                {{-0.25f, -0.85f}, {1.0f, 0.0f, 1.0f}}, // 4: bottom-left
-                {{0.25f, -0.85f}, {0.0f, 1.0f, 1.0f}},  // 5: bottom-right
-                {{0.25f, -0.35f}, {1.0f, 1.0f, 1.0f}},  // 6: top-right
-                {{-0.25f, -0.35f}, {0.5f, 0.5f, 0.5f}}  // 7: top-left
             };
 
             const std::vector<uint16_t> indices = {
                 // Left square
-                0, 1, 2,
-                0, 2, 3,
+                0,
+                1,
+                2,
+                0,
+                2,
+                3,
+            };
 
-                // Right square
-                4, 5, 6,
-                4, 6, 7};
-
-            _VB = VEngine::VertexBuffer::Create((float *)vertices.data(), 5 * vertices.size());
-            _VB2 = VEngine::VertexBuffer::Create((float *)ChangingVertices.data(), 5 * ChangingVertices.size());
-            _IB = VEngine::IndexBuffer::Create((void *)indices.data(), indices.size(), IndexBufferType::UINT_16);
+            _VB = VEngine::VertexBuffer::Create((float *)vertices.data(), 5 * vertices.size(), BufferTypes::STATIC);
+            _IB = VEngine::IndexBuffer::Create((void *)indices.data(), indices.size(), IndexBufferType::UINT_16, BufferTypes::STATIC);
         }
 
         void OnUpdate(TimeStep ts) override
@@ -71,7 +51,6 @@ namespace VEngine
 
             Renderer::Begin(Spec);
             Renderer::Submit(_Shader, _VB, _IB);
-            Renderer::Submit(_Shader, _VB2, _IB);
             Renderer::End();
 
             Renderer::Render(); // to a framebuffer
@@ -81,7 +60,6 @@ namespace VEngine
         void OnTerminate() override
         {
             _VB->Destroy();
-            _VB2->Destroy();
             _IB->Destroy();
         }
 
@@ -92,7 +70,7 @@ namespace VEngine
         }
 
     private:
-        std::shared_ptr<VEngine::VertexBuffer> _VB, _VB2;
+        std::shared_ptr<VEngine::VertexBuffer> _VB;
         std::shared_ptr<VEngine::IndexBuffer> _IB;
         std::shared_ptr<VEngine::Shader> _Shader;
     };

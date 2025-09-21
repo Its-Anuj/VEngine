@@ -37,6 +37,7 @@ namespace VEngine
             double StartTime = GetWindowTime();
             TimeStep ts = (StartTime - _LastTime);
             _LastTime = StartTime;
+            VENGINE_CORE_PRINTLN("Time: " << ts.GetSecond() << " s ,FPS: " << ts.GetFPS());
 
             for (auto layer : _Stack)
                 layer->OnUpdate(ts);
