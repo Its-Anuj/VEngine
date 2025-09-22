@@ -19,6 +19,7 @@ namespace VEngine
             VulkanRenderSpec Spec;
             Spec.EnableValidationLayer = true;
             Spec.Name = "VEngine";
+            Spec.Win32Surface = RenderSpec.window->GetWin32Surface();
 
             Get().Api->Init((void *)&Spec);
         }

@@ -2,6 +2,7 @@
 
 #include "RendererAPI.h"
 #include "Buffers.h"
+struct VkDebugUtilsMessengerCreateInfoEXT;
 
 namespace VEngine
 {
@@ -9,6 +10,10 @@ namespace VEngine
     {
         bool EnableValidationLayer = true;
         std::string Name = " ";
+        std::vector<const char*> DeviceExtensions;
+        std::vector<const char*> InstanceExtensions;
+        std::vector<const char*> InstanceLayers;
+        void *Win32Surface;
 
         VulkanRenderSpec() {}
     };
@@ -50,6 +55,16 @@ namespace VEngine
 
     private:
         void _CreateInstance();
+        void _CreateDebugMessenger();
+        void _PopulateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
+        void _CreateWin32Surface();
+
+        void _CreatePhysicalDevice();
+        void _FillPhysicalDeviceInfo();
+        void _FindSuitablePhysicalDevice();
+        void _CheckPhysicalDeviceExtensions(std::vector<const char*>& PDeviceExtProps);
+
+        void _CreateLogicalDevice();
 
     private:
         VulkanRenderData *_Data;
