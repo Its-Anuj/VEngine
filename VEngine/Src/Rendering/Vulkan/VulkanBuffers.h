@@ -12,7 +12,7 @@ namespace VEngine
         int SizeInBytes;
         VkBufferUsageFlags UsageType;
         VkSharingMode SharingMode;
-        VkMemoryPropertyFlags UsingProperties;
+        VkMemoryPropertyFlags MemoryPropsFlags;
         BufferTypes Type;
     };
 
@@ -30,8 +30,12 @@ namespace VEngine
         VkBuffer GetHandle() { return _Buffer; }
 
     private:
+        void _ForStaticInit(VulkanBufferSpec &Spec);
+        void _ForDynamicInit(VulkanBufferSpec &Spec);
+        void _CopyBuffer();
+    private:
         VkBuffer _Buffer;
-        void* _MappedData = nullptr;
+        void *_MappedData = nullptr;
         VkDeviceMemory _Memory;
     };
 
@@ -47,6 +51,7 @@ namespace VEngine
 
         VkBuffer GetHandle() { return _Buffer.GetHandle(); }
 
+
     private:
         VulkanBuffer _Buffer;
     };
@@ -61,7 +66,7 @@ namespace VEngine
         void Bind() override;
         void Destroy() override;
 
-        uint32_t Size() const  override{ return _Size; }
+        uint32_t Size() const override { return _Size; }
         VkIndexType GetType();
 
         VkBuffer GetHandle() { return _Buffer.GetHandle(); }
@@ -79,14 +84,14 @@ namespace VEngine
         ~VulkanUniformBuffer() {}
 
         bool Init(void *data, int SizeinBytes, BufferTypes Type);
-        void Destroy() ;
+        void Destroy();
         void Bind();
-        void* GetMappedPointer() {return _MappedData;}
+        void *GetMappedPointer() { return _MappedData; }
 
         VkBuffer GetHandle() { return _Buffer.GetHandle(); }
 
     private:
         VulkanBuffer _Buffer;
-        void* _MappedData = nullptr;
+        void *_MappedData = nullptr;
     };
 } // namespace VEngine

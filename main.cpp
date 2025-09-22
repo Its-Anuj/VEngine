@@ -40,27 +40,28 @@ namespace VEngine
                 3,
             };
 
-            _VB = VEngine::VertexBuffer::Create((float *)vertices.data(), 5 * vertices.size(), BufferTypes::STATIC);
-            _IB = VEngine::IndexBuffer::Create((void *)indices.data(), indices.size(), IndexBufferType::UINT_16, BufferTypes::STATIC);
+            // _VB = VEngine::VertexBuffer::Create((float *)vertices.data(), 5 * vertices.size(), BufferTypes::STATIC);
+            // _IB = VEngine::IndexBuffer::Create((void *)indices.data(), indices.size(), IndexBufferType::UINT_16, BufferTypes::STATIC);
         }
 
         void OnUpdate(TimeStep ts) override
         {
-            RenderPassSpec Spec;
-            Spec.ClearColor = {0.2, 0.2, 0.2, 1.0f};
+            // TODO: Rename 
+            // RenderPassSpec Spec;
+            // Spec.ClearColor = {0.2, 0.2, 0.2, 1.0f};
 
-            Renderer::Begin(Spec);
-            Renderer::Submit(_Shader, _VB, _IB);
-            Renderer::End();
+            // Renderer::Begin(Spec);
+            // Renderer::Submit(_Shader, _VB, _IB);
+            // Renderer::End();
 
-            Renderer::Render(); // to a framebuffer
-            Renderer::Present();
+            // Renderer::Render(); // to a framebuffer
+            // Renderer::Present();
         }
 
         void OnTerminate() override
         {
-            _VB->Destroy();
-            _IB->Destroy();
+            // _VB->Destroy();
+            // _IB->Destroy();
         }
 
         void OnEvent(Event &e) override
@@ -81,7 +82,7 @@ int main(int argc, char const *argv[])
     VEngine::ApplicationSpec Spec;
     Spec.Name = "VEngine Editor";
     Spec.Dimensions = {1200.0f, 780.0f};
-    Spec.VSync = true;
+    Spec.VSync = false;
 
     VEngine::Application app;
     app.OnInit(Spec);

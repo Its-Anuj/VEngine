@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Shaders.h"
-#include "Buffers.h"
+#include "Core.h"
+#include "ResourceFactory.h"
 
 namespace VEngine
 {
@@ -37,6 +37,7 @@ namespace VEngine
         virtual void End() = 0;
         virtual void Finish() = 0;
 
+        virtual Ref<ResourceFactory> GetResourceFactory() = 0;
     private:
     };
 } // namespace VEngine

@@ -176,8 +176,8 @@ namespace VEngine
         glfwMakeContextCurrent(_Window);
         VENGINE_CORE_PRINTLN("[WINDOW] Created: " << _Data.Data.Name << " with, " << _Data.Data.Dimensions.x << "x" << _Data.Data.Dimensions.y)
 
-        glfwSwapInterval(Data.VSync);
         glfwSetWindowUserPointer(_Window, &_Data);
+        glfwSwapInterval(Data.VSync);
 
         // Callbacks
         glfwSetWindowCloseCallback(_Window, VEngine_WindowCloseCallBack);

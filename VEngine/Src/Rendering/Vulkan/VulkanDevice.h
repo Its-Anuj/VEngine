@@ -6,6 +6,7 @@ namespace VEngine
     {
         GRAPHICS,
         PRESENT,
+        TRANSFER,
         COUNT
     };
 

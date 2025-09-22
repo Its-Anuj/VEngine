@@ -44,6 +44,11 @@ namespace VEngine
         std::string Name;
     };
 
+    struct GraphicsShaderDesc
+    {
+
+    };
+
     class Shader
     {
     public:

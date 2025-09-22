@@ -14,6 +14,8 @@ namespace VEngine
         MouseScroll,
         WindowClose,
         WindowResize,
+        WindowMinimized,
+        WindowOutOfFocus,
         FrameBufferResize
     };
 

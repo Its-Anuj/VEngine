@@ -4,9 +4,7 @@
 
 #define VK_USE_PLATFORM_WIN32_KHR
 #include "vulkan.h"
-#include "VulkanRenderer.h"
-#include "VulkanShaders.h"
-#include "VulkanBuffers.h"
+#include "ModernVulkan/VulkanRenderApi.h"
 
 namespace VEngine
 {
@@ -16,20 +14,11 @@ namespace VEngine
     {
         if (RenderSpec.Type == RenderAPIType::VULKAN)
         {
-            Get().Api = new VulkanRenderer();
+            Get().Api = new VulkanRenderApi();
 
             VulkanRenderSpec Spec;
-            Spec.Name = "VEngine";
-            Spec.Version = VulkanSupportedVersions::V_1_0;
             Spec.EnableValidationLayer = true;
-
-            Spec.RequirerdExtensions.push_back("VK_KHR_surface");
-            Spec.RequirerdExtensions.push_back("VK_KHR_win32_surface");
-            Spec.Win32Surface = RenderSpec.window->GetWin32Surface();
-            auto fb = RenderSpec.window->GetFrameBufferSize();
-            Spec.FrameBufferWidth = RenderSpec.window->GetFrameBufferSize().x;
-            Spec.FrameBufferHeight = RenderSpec.window->GetFrameBufferSize().y;
-            Spec.FramesInFlightCount = RenderSpec.FramesInFlightCount;
+            Spec.Name = "VEngine";
 
             Get().Api->Init((void *)&Spec);
         }
@@ -81,33 +70,25 @@ namespace VEngine
         Get().Api->Finish();
     }
 
-    std::shared_ptr<VertexBuffer> VEngine::VertexBuffer::Create(float *vertices, uint32_t size, BufferTypes BType)
+    Ref<ResourceFactory> Renderer::__GetResouceFactory()
+    {
+        return Get().Api->GetResourceFactory();
+    }
+
+    std::shared_ptr<VertexBuffer> VEngine::VertexBuffer::Create(const VertexBufferDesc& desc)
     {
         if (_API == RenderAPIType::VULKAN)
         {
-            std::shared_ptr<VulkanVertexBuffer> VB = std::make_shared<VulkanVertexBuffer>();
-            VB->Init(vertices, size, BType);
-            return VB;
+            return Renderer::__GetResouceFactory()->CreateVertexBuffer(desc);
         }
     }
 
-    std::shared_ptr<IndexBuffer> VEngine::IndexBuffer::Create(void *data, int Uintcount, IndexBufferType Type, BufferTypes BType)
+    std::shared_ptr<IndexBuffer> VEngine::IndexBuffer::Create(const IndexBufferDesc& desc)
     {
         if (_API == RenderAPIType::VULKAN)
         {
-            std::shared_ptr<VulkanIndexBuffer> IB = std::make_shared<VulkanIndexBuffer>();
-            IB->Init(data, Uintcount, Type, BType);
-            return IB;
+            return Renderer::__GetResouceFactory()->CreateIndexBuffer(desc);
         }
     }
 
-    std::shared_ptr<Shader> VEngine::Shader::Create(const ShaderSpec &Spec)
-    {
-        if (_API == RenderAPIType::VULKAN)
-        {
-            std::shared_ptr<VulkanShader> VB = std::make_shared<VulkanShader>();
-            VB->Init(Spec);
-            return VB;
-        }
-    }
 } // namespace VEngine

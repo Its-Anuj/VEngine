@@ -7,6 +7,11 @@
 #include "VulkanRenderer.h"
 #include "VulkanGraphicsPipeline.h"
 #include "VulkanSwapChain.h"
+#define VMA_IMPLEMENTATION
+// Optional: If you use a dynamic loader like Volk, you might need these:
+// #define VMA_STATIC_VULKAN_FUNCTIONS 0
+// #define VMA_DYNAMIC_VULKAN_FUNCTIONS 1
+#include <vk_mem_alloc.h> // The include path is now provided by the CMake target
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -85,6 +90,7 @@ namespace VEngine
         VkRenderPass RenderPass;
 
         VkCommandPool CommandPool;
+        VkCommandPool TransferCommandPool;
         std::vector<VkCommandBuffer> CommandBuffers;
 
         VkPipelineLayout PipelineLayout;
@@ -110,6 +116,8 @@ namespace VEngine
         std::vector<void *> UniformBuffersMapped;
         VkDescriptorPool DescriptorPool;
         std::vector<VkDescriptorSet> DescriptorSets;
+
+        VmaAllocator Vmmm;
     };
 
     static VulkanRuntimeData *g_RuntimeData;
@@ -300,6 +308,7 @@ namespace VEngine
         for (int i = 0; i < _Spec.FramesInFlightCount; i++)
             _Data->UniformBuffers[i].Destroy();
 
+        vkDestroyCommandPool(_Data->ActiveDevice->GetHandle(), _Data->TransferCommandPool, nullptr);
         vkDestroyCommandPool(_Data->ActiveDevice->GetHandle(), _Data->CommandPool, nullptr);
         for (auto framebuffer : _Data->SwapChainFrameBuffers)
             vkDestroyFramebuffer(_Data->ActiveDevice->GetHandle(), framebuffer, nullptr);
@@ -362,6 +371,44 @@ namespace VEngine
         vkDeviceWaitIdle(_Data->ActiveDevice->GetHandle());
     }
 
+    void VulkanRenderer::CopyBuffer(VulkanBuffer &SrcBuffer, VulkanBuffer &DstBuffer, uint32_t Size)
+    {
+        VkCommandBuffer commandbuffer;
+
+        VkCommandBufferAllocateInfo allocinfo{};
+        allocinfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocinfo.commandBufferCount = 1;
+        allocinfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocinfo.commandPool = _Data->TransferCommandPool;
+
+        if (vkAllocateCommandBuffers(_Data->ActiveDevice->GetHandle(), &allocinfo, &commandbuffer) != VK_SUCCESS)
+            throw std::runtime_error("Bad");
+
+        VkCommandBufferBeginInfo begininfo{};
+        begininfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begininfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandbuffer, &begininfo);
+
+        VkBufferCopy buffercopy{};
+        buffercopy.size = Size;
+        buffercopy.dstOffset = 0;
+        buffercopy.srcOffset = 0;
+        vkCmdCopyBuffer(commandbuffer, SrcBuffer.GetHandle(), DstBuffer.GetHandle(), 1, &buffercopy);
+
+        vkEndCommandBuffer(commandbuffer);
+
+        VkSubmitInfo submitinfo{};
+        submitinfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitinfo.pCommandBuffers = &commandbuffer;
+        submitinfo.commandBufferCount = 1;
+
+        vkQueueSubmit(_Data->ActiveDevice->GetQueues(QueueFamilies::TRANSFER), 1, &submitinfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(_Data->ActiveDevice->GetQueues(QueueFamilies::TRANSFER));
+
+        vkFreeCommandBuffers(_Data->ActiveDevice->GetHandle(), _Data->TransferCommandPool, 1, &commandbuffer);
+    }
+
     void VulkanRenderer::Render()
     {
         _UpdateUniformBuffer(_Data->CurrentFrame);
@@ -407,6 +454,14 @@ namespace VEngine
         _CreateWindowSurface();
         _CreateSuitablePhysicalDevice();
         _CreateSuitableLogicalDevice();
+
+        VmaAllocatorCreateInfo allocatorInfo = {};
+        allocatorInfo.physicalDevice = _Data->ActivePhysicalDevice->GetHandle();
+        allocatorInfo.device = _Data->ActiveDevice->GetHandle();
+        allocatorInfo.instance = _Data->Instance;
+
+        vmaCreateAllocator(&allocatorInfo, &_Data->Vmmm);
+
         _CreateSwapChain();
         _CreateRenderPass();
         _CreateDescriptorSetLayout();
@@ -774,14 +829,24 @@ namespace VEngine
     void VulkanRenderer::_CreateCommandPool()
     {
         QueueFamilyIndices queueFamilyIndices = _Data->ActivePhysicalDevice->GetQueueFamilyIndicies();
+        {
+            VkCommandPoolCreateInfo poolInfo{};
+            poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            poolInfo.queueFamilyIndex = queueFamilyIndices.Queues[QueueFamilies::GRAPHICS].value();
 
-        VkCommandPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = queueFamilyIndices.Queues[QueueFamilies::GRAPHICS].value();
+            if (vkCreateCommandPool(_Data->ActiveDevice->GetHandle(), &poolInfo, nullptr, &_Data->CommandPool) != VK_SUCCESS)
+                throw std::runtime_error("failed to create command pool!");
+        }
+        {
+            VkCommandPoolCreateInfo poolInfo{};
+            poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            poolInfo.queueFamilyIndex = queueFamilyIndices.Queues[QueueFamilies::TRANSFER].value();
 
-        if (vkCreateCommandPool(_Data->ActiveDevice->GetHandle(), &poolInfo, nullptr, &_Data->CommandPool) != VK_SUCCESS)
-            throw std::runtime_error("failed to create command pool!");
+            if (vkCreateCommandPool(_Data->ActiveDevice->GetHandle(), &poolInfo, nullptr, &_Data->TransferCommandPool) != VK_SUCCESS)
+                throw std::runtime_error("failed to create command pool!");
+        }
     }
 
     void VulkanRenderer::_CreateCommandBuffer()
@@ -824,6 +889,9 @@ namespace VEngine
             Scores[i] += Device.GetLimits().maxImageDimension2D;
 
             if (Indicies.Queues[QueueFamilies::GRAPHICS].has_value())
+                Scores[i] += 10000;
+
+            if (Indicies.Queues[QueueFamilies::TRANSFER].has_value())
                 Scores[i] += 10000;
 
             if (!Device.GetFeatures().geometryShader)
@@ -1235,26 +1303,14 @@ namespace VEngine
     bool VulkanBuffer::Init(VulkanBufferSpec &Spec)
     {
         _Buffer = CreateBuffer(Spec.Device, Spec.SizeInBytes, Spec.UsageType, Spec.SharingMode);
+        _Memory = AllocateMemory(Spec.Device, Spec.PhysicalDevice, _Buffer, Spec.MemoryPropsFlags);
 
-        _Memory = AllocateMemory(Spec.Device, Spec.PhysicalDevice, _Buffer, Spec.UsingProperties);
         Bind(Spec.Device);
 
         if (Spec.Type == BufferTypes::DYNAMIC)
-        {
-            // For dynamic buffers, map and keep persistent mapping
-            void* Data = nullptr;
-            vkMapMemory(Spec.Device, _Memory, 0, Spec.SizeInBytes, 0, &Data);
-            Spec.Data = Data;
-            // Store the mapped pointer internally, not in Spec.Data
-            // Spec.Data might be temporary, but _MappedData persists
-        }
+            _ForDynamicInit(Spec);
         else if (Spec.Type == BufferTypes::STATIC)
-        {
-            void *data;
-            vkMapMemory(Spec.Device, _Memory, 0, Spec.SizeInBytes, 0, &data);
-            memcpy(data, Spec.Data, (size_t)Spec.SizeInBytes);
-            vkUnmapMemory(Spec.Device, _Memory);
-        }
+            _ForStaticInit(Spec);
 
         return true;
     }
@@ -1279,6 +1335,30 @@ namespace VEngine
         memcpy(data, Data, (size_t)Size);
         vkUnmapMemory(device, _Memory);
     }
+
+    void VulkanBuffer::_CopyBuffer()
+    {
+    }
+
+    void VulkanBuffer::_ForStaticInit(VulkanBufferSpec &Spec)
+    {
+        // Use stagin buffer
+        // _Memory = AllocateMemory(Spec.Device, Spec.PhysicalDevice, _Buffer, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        void *data;
+
+        vkMapMemory(Spec.Device, _Memory, 0, Spec.SizeInBytes, 0, &data);
+        memcpy(data, Spec.Data, (size_t)Spec.SizeInBytes);
+        vkUnmapMemory(Spec.Device, _Memory);
+    }
+
+    void VulkanBuffer::_ForDynamicInit(VulkanBufferSpec &Spec)
+    {
+        // For dynamic buffers, map and keep persistent mapping
+        // _Memory = AllocateMemory(Spec.Device, Spec.PhysicalDevice, _Buffer, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+        void *Data = nullptr;
+        vkMapMemory(Spec.Device, _Memory, 0, Spec.SizeInBytes, 0, &Data);
+        Spec.Data = Data;
+    }
 #pragma endregion
 #pragma region VertexBuffer
 
@@ -1291,9 +1371,9 @@ namespace VEngine
         Spec.Data = (void *)VerticesData;
         Spec.SharingMode = VK_SHARING_MODE_EXCLUSIVE;
         Spec.UsageType = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        Spec.UsingProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         Spec.SizeInBytes = sizeof(float) * FloatCount;
         Spec.Type = Type;
+        Spec.MemoryPropsFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
         _Buffer.Init(Spec);
 
@@ -1322,8 +1402,8 @@ namespace VEngine
         Spec.Data = data;
         Spec.SharingMode = VK_SHARING_MODE_EXCLUSIVE;
         Spec.UsageType = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        Spec.UsingProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
         Spec.SizeInBytes = sizeof(unsigned int) * Uintcount;
+        Spec.MemoryPropsFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         Spec.Type = BType;
 
         _Buffer.Init(Spec);
@@ -1361,7 +1441,8 @@ namespace VEngine
         Spec.Data = data;
         Spec.SizeInBytes = SizeinBytes;
         Spec.UsageType = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-        Spec.UsingProperties = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        Spec.MemoryPropsFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
         Spec.SharingMode = VK_SHARING_MODE_EXCLUSIVE;
         Spec.Type = Type;
 
@@ -1478,6 +1559,8 @@ namespace VEngine
             VkBool32 presentSupport = false;
             if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
                 Indicies.Queues[QueueFamilies::GRAPHICS] = i;
+            else if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT)
+                Indicies.Queues[QueueFamilies::TRANSFER] = i;
             vkGetPhysicalDeviceSurfaceSupportKHR(_Device, i, Surface, &presentSupport);
 
             if (presentSupport)
@@ -1548,6 +1631,9 @@ namespace VEngine
         vkGetDeviceQueue(_Device, indices.Queues[QueueFamilies::GRAPHICS].value(), 0, &_Queues[QueueFamilies::GRAPHICS]);
         vkGetDeviceQueue(_Device, indices.Queues[QueueFamilies::PRESENT].value(), 0, &_Queues[QueueFamilies::PRESENT]);
 
+        if (indices.Queues[QueueFamilies::TRANSFER].has_value())
+            vkGetDeviceQueue(_Device, indices.Queues[QueueFamilies::TRANSFER].value(), 0, &_Queues[QueueFamilies::TRANSFER]);
+
         return true;
     }
 
@@ -1559,5 +1645,6 @@ namespace VEngine
         _Spec.RequiredExtensions.clear();
     }
 #pragma endregion
+}
 
 } // namespace VEngine

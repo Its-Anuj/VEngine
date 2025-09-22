@@ -18,17 +18,32 @@ namespace VEngine
         DYNAMIC
     };
 
+    struct VertexBufferDesc
+    {
+        BufferTypes Type;
+        void* Data;
+        int SizeInBytes;
+    };
+    
+    struct IndexBufferDesc
+    {
+        BufferTypes Type;
+        void* Data;
+        int SizeInBytes;
+        IndexBufferType IntType;
+    };
+
     class VertexBuffer
     {
     public:
         VertexBuffer() {}
         ~VertexBuffer() {}
 
-        virtual bool Init(float *data, int FloatCount, BufferTypes Type) = 0;
+        virtual bool Init(const VertexBufferDesc& desc) = 0;
         virtual void Bind() = 0;
         virtual void Destroy() = 0;
 
-        static std::shared_ptr<VertexBuffer> Create(float *vertices, uint32_t size, BufferTypes BType);
+        static std::shared_ptr<VertexBuffer> Create(const VertexBufferDesc& desc);
 
         const UUID &ID() const { return _ID; }
 
@@ -42,13 +57,13 @@ namespace VEngine
         IndexBuffer() {}
         ~IndexBuffer() {}
 
-        virtual bool Init(void *data, int Uintcount, IndexBufferType Type, BufferTypes BType) = 0;
+        virtual bool Init(const IndexBufferDesc& desc) = 0;
         virtual void Bind() = 0;
         virtual void Destroy() = 0;
         virtual uint32_t Size() const = 0;
 
         const UUID &ID() const { return _ID; }
-        static std::shared_ptr<IndexBuffer> Create(void *data, int Uintcount, IndexBufferType Type, BufferTypes BType);
+        static std::shared_ptr<IndexBuffer> Create(const IndexBufferDesc& desc);
 
     private:
         UUID _ID;

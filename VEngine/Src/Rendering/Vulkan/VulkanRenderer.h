@@ -11,6 +11,7 @@ namespace VEngine
     struct VulkanDevice;
     struct VulkanPhysicalDevice;
     struct VulkanSwapChain;
+    struct VulkanBuffer;
 
     struct VulkanRuntimeData
     {
@@ -62,6 +63,7 @@ namespace VEngine
         virtual void Present() override;
 
         virtual void Finish() override;
+        void CopyBuffer(VulkanBuffer &SrcBuffer, VulkanBuffer &DstBuffer, uint32_t Size);
 
     private:
         void _CreateInstance();

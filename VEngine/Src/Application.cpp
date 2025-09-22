@@ -33,11 +33,10 @@ namespace VEngine
     {
         while (!_Window.ShouldClose())
         {
-            // do after changin in frame flight count
-            double StartTime = GetWindowTime();
-            TimeStep ts = (StartTime - _LastTime);
-            _LastTime = StartTime;
-            VENGINE_CORE_PRINTLN("Time: " << ts.GetSecond() << " s ,FPS: " << ts.GetFPS());
+            auto Startime = GetWindowTime();
+            TimeStep ts = Startime - _LastTime;
+            _LastTime = Startime;
+            // VENGINE_APP_PRINTLN("Fps:  " << ts.GetFPS() << " Time: " << ts.GetMilliSecond());
 
             for (auto layer : _Stack)
                 layer->OnUpdate(ts);

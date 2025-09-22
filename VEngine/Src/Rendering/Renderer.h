@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Buffers.h"
-#include "Shaders.h"
 #include "RendererAPI.h"
 
 namespace VEngine
@@ -35,6 +33,7 @@ namespace VEngine
         static void Submit();
         static void Present();
         static void Finish();
+        static Ref<ResourceFactory> __GetResouceFactory();
 
     private:
         RendererAPI *Api;
