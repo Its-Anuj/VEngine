@@ -31,7 +31,7 @@ namespace VEngine
         virtual void Render() = 0;
         virtual void FrameBufferResize(int x, int y) = 0;
 
-        virtual void Submit(std::shared_ptr<VertexBuffer>& vb, std::shared_ptr<IndexBuffer>& ib) = 0;
+        virtual void Submit() = 0;
         virtual void Present() = 0;
         virtual void Begin(const RenderPassSpec& Spec) = 0;
         virtual void End() = 0;

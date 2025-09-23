@@ -20,6 +20,9 @@ namespace VEngine
             Spec.EnableValidationLayer = true;
             Spec.Name = "VEngine";
             Spec.Win32Surface = RenderSpec.window->GetWin32Surface();
+            Spec.FrameBufferSize.x = RenderSpec.window->GetFrameBufferSize().x;
+            Spec.FrameBufferSize.y = RenderSpec.window->GetFrameBufferSize().y;
+            Spec.InFrameFlightCount = 2;
 
             Get().Api->Init((void *)&Spec);
         }
@@ -44,7 +47,6 @@ namespace VEngine
 
     void Renderer::Submit(std::shared_ptr<Shader> &shader, std::shared_ptr<VertexBuffer> &Vb, std::shared_ptr<IndexBuffer> &Ib)
     {
-        Get().Api->Submit(Vb, Ib);
     }
 
     void Renderer::Begin(const RenderPassSpec &Spec)
@@ -59,6 +61,7 @@ namespace VEngine
 
     void Renderer::Submit()
     {
+        Get().Api->Submit();
     }
 
     void Renderer::Present()
@@ -76,7 +79,7 @@ namespace VEngine
         return Get().Api->GetResourceFactory();
     }
 
-    std::shared_ptr<VertexBuffer> VEngine::VertexBuffer::Create(const VertexBufferDesc& desc)
+    std::shared_ptr<VertexBuffer> VEngine::VertexBuffer::Create(const VertexBufferDesc &desc)
     {
         if (_API == RenderAPIType::VULKAN)
         {
@@ -84,7 +87,7 @@ namespace VEngine
         }
     }
 
-    std::shared_ptr<IndexBuffer> VEngine::IndexBuffer::Create(const IndexBufferDesc& desc)
+    std::shared_ptr<IndexBuffer> VEngine::IndexBuffer::Create(const IndexBufferDesc &desc)
     {
         if (_API == RenderAPIType::VULKAN)
         {

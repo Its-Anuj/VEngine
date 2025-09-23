@@ -47,15 +47,15 @@ namespace VEngine
         void OnUpdate(TimeStep ts) override
         {
             // TODO: Rename 
-            // RenderPassSpec Spec;
-            // Spec.ClearColor = {0.2, 0.2, 0.2, 1.0f};
+            RenderPassSpec Spec;
+            Spec.ClearColor = {0.2, 0.2, 0.2, 1.0f};
 
-            // Renderer::Begin(Spec);
-            // Renderer::Submit(_Shader, _VB, _IB);
-            // Renderer::End();
+            Renderer::Begin(Spec);
+            Renderer::Submit();
+            Renderer::End();
 
-            // Renderer::Render(); // to a framebuffer
-            // Renderer::Present();
+            Renderer::Render(); // to a framebuffer
+            Renderer::Present();
         }
 
         void OnTerminate() override
