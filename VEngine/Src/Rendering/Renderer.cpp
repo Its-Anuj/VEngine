@@ -45,10 +45,6 @@ namespace VEngine
         Get().Api->FrameBufferResize(x, y);
     }
 
-    void Renderer::Submit(std::shared_ptr<Shader> &shader, std::shared_ptr<VertexBuffer> &Vb, std::shared_ptr<IndexBuffer> &Ib)
-    {
-    }
-
     void Renderer::Begin(const RenderPassSpec &Spec)
     {
         Get().Api->Begin(Spec);
@@ -59,9 +55,9 @@ namespace VEngine
         Get().Api->End();
     }
 
-    void Renderer::Submit()
+    void Renderer::Submit(const Ref<VertexBuffer> &VB, const Ref<IndexBuffer>& IB)
     {
-        Get().Api->Submit();
+        Get().Api->Submit(VB, IB);
     }
 
     void Renderer::Present()
@@ -78,21 +74,4 @@ namespace VEngine
     {
         return Get().Api->GetResourceFactory();
     }
-
-    std::shared_ptr<VertexBuffer> VEngine::VertexBuffer::Create(const VertexBufferDesc &desc)
-    {
-        if (_API == RenderAPIType::VULKAN)
-        {
-            return Renderer::__GetResouceFactory()->CreateVertexBuffer(desc);
-        }
-    }
-
-    std::shared_ptr<IndexBuffer> VEngine::IndexBuffer::Create(const IndexBufferDesc &desc)
-    {
-        if (_API == RenderAPIType::VULKAN)
-        {
-            return Renderer::__GetResouceFactory()->CreateIndexBuffer(desc);
-        }
-    }
-
 } // namespace VEngine

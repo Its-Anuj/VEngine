@@ -159,12 +159,16 @@ namespace VEngine
     void Window::SwapBuffers()
     {
         glfwSwapBuffers(_Window);
-        glfwPollEvents();
     }
 
     bool Window::ShouldClose()
     {
         return glfwWindowShouldClose(_Window);
+    }
+
+    void Window::PollEvents()
+    {
+        glfwPollEvents();
     }
 
     void Window::Init(const WindowData &Data)
@@ -177,7 +181,6 @@ namespace VEngine
         VENGINE_CORE_PRINTLN("[WINDOW] Created: " << _Data.Data.Name << " with, " << _Data.Data.Dimensions.x << "x" << _Data.Data.Dimensions.y)
 
         glfwSetWindowUserPointer(_Window, &_Data);
-        glfwSwapInterval(Data.VSync);
 
         // Callbacks
         glfwSetWindowCloseCallback(_Window, VEngine_WindowCloseCallBack);

@@ -8,6 +8,7 @@
 
 #include "VulkanRenderApi.h"
 #include "VulkanDevice.h"
+#include "VulkanResourceFactory.h"
 
 #define PRINTLN(x)      \
     {                   \
@@ -172,7 +173,9 @@ namespace VEngine
         std::vector<VkFence> InFlightFences;
         uint32_t CurrentFrame = 0;
         uint32_t CurrentImageIndex = 0;
+        bool FrameBufferChanged = false;
     };
+
 #pragma region VulkanRenderApi
     void VulkanRenderApi::Init(void *Spec)
     {
@@ -249,9 +252,7 @@ namespace VEngine
         vkDestroyPipeline(_Data->Device.GetHandle(), _Data->GraphcisPipeline, nullptr);
         vkDestroyPipelineLayout(_Data->Device.GetHandle(), _Data->GraphcisPipelineLayout, nullptr);
 
-        for (auto imageview : _Data->SwapChainImageViews)
-            vkDestroyImageView(_Data->Device.GetHandle(), imageview, nullptr);
-        vkDestroySwapchainKHR(_Data->Device.GetHandle(), _Data->SwapChain, nullptr);
+        _DestroySwapChain();
 
         _Data->Device.Destroy();
         vkDestroySurfaceKHR(_Data->Instance, _Data->SurfaceKHR, nullptr);
@@ -284,8 +285,20 @@ namespace VEngine
             throw std::runtime_error("failed to submit draw command buffer!");
     }
 
-    void VulkanRenderApi::Submit()
+    void VulkanRenderApi::FrameBufferResize(int x, int y)
     {
+        _Data->FrameBufferSize.x = x;
+        _Data->FrameBufferSize.y = y;
+        _Data->Extent.width = x;
+        _Data->Extent.height = y;
+        _Data->FrameBufferChanged = true;
+    }
+
+    void VulkanRenderApi::Submit(const Ref<VertexBuffer> &VB, const Ref<IndexBuffer> &IB)
+    {
+        auto VulkanVB = std::static_pointer_cast<VulkanVertexBuffer>(VB);
+        auto VulkanIB = std::static_pointer_cast<VulkanIndexBuffer>(IB);
+
         auto commandBuffer = _Data->GraphicsCommandBuffers[_Data->CurrentFrame];
         // Bind pipeline (created without render pass)
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _Data->GraphcisPipeline);
@@ -306,8 +319,14 @@ namespace VEngine
         scissor.extent = _Data->Extent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+        // 🆕 Bind vertex buffer
+        VkBuffer vertexBuffers[] = {VulkanVB->GetHandle()};
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+        vkCmdBindIndexBuffer(commandBuffer, VulkanIB->GetHandle(), 0, VK_INDEX_TYPE_UINT16);
         // 🎨 Draw your geometry
-        vkCmdDraw(commandBuffer, 3, 1, 0, 0); // Draw a triangle
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(VulkanIB->GetCount()), 1, 0, 0, 0);
     }
 
     void VulkanRenderApi::Present()
@@ -326,7 +345,15 @@ namespace VEngine
         presentInfo.pImageIndices = &_Data->CurrentImageIndex;
         presentInfo.pResults = nullptr; // Optional
 
-        VULKAN_SUCCESS_ASSERT(vkQueuePresentKHR(_Data->Device.GetQueue(QueueFamilies::PRESENT), &presentInfo), "Queue Present Error");
+        auto result = vkQueuePresentKHR(_Data->Device.GetQueue(QueueFamilies::PRESENT), &presentInfo);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || _Data->FrameBufferChanged)
+        {
+            _Data->FrameBufferChanged = false;
+            _RecreateSwapChain();
+        }
+        else if (result != VK_SUCCESS)
+            throw std::runtime_error("failed to present swap chain image!");
 
         _Data->CurrentFrame = (_Data->CurrentFrame + 1) % _Spec.InFrameFlightCount;
     }
@@ -339,6 +366,18 @@ namespace VEngine
                                                 _Data->ImageAvailableSemaphores[_Data->CurrentFrame], VK_NULL_HANDLE,
                                                 &_Data->CurrentImageIndex);
 
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            _RecreateSwapChain();
+            return;
+        }
+        else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+            throw std::runtime_error("failed to acquire swap chain image!");
+
+        if (result != VK_SUCCESS)
+        {
+            std::cout << "ERROR: AcquireNextImage failed: " << result << "\n";
+        }
         vkResetFences(_Data->Device.GetHandle(), 1, &_Data->InFlightFences[_Data->CurrentFrame]);
         vkResetCommandBuffer(_Data->GraphicsCommandBuffers[_Data->CurrentFrame], 0);
 
@@ -385,7 +424,7 @@ namespace VEngine
         colorAttachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // ✅ Now correct
         colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        colorAttachment.clearValue = {{0.3f, 0.3f, 0.3f, 1.0f}};
+        colorAttachment.clearValue = {{Spec.ClearColor.x, Spec.ClearColor.y, Spec.ClearColor.z, Spec.ClearColor.w}};
 
         renderingInfo.colorAttachmentCount = 1;
         renderingInfo.pColorAttachments = &colorAttachment;
@@ -425,6 +464,11 @@ namespace VEngine
             1, &barrier);
 
         vkEndCommandBuffer(commandBuffer);
+    }
+
+    void VulkanRenderApi::Finish()
+    {
+        vkDeviceWaitIdle(_Data->Device.GetHandle());
     }
 
     void VulkanRenderApi::_CreateInstance()
@@ -669,9 +713,7 @@ namespace VEngine
         // Determine image count
         uint32_t imageCount = support.capabilities.minImageCount + 1;
         if (support.capabilities.maxImageCount > 0 && imageCount > support.capabilities.maxImageCount)
-        {
             imageCount = support.capabilities.maxImageCount;
-        }
 
         // Create swapchain
         VkSwapchainCreateInfoKHR createInfo{};
@@ -736,6 +778,20 @@ namespace VEngine
             VULKAN_SUCCESS_ASSERT(vkCreateImageView(_Data->Device.GetHandle(), &viewInfo, nullptr, &_Data->SwapChainImageViews[i]), "[VULKAN]: Image View Creation Failed!");
         }
         PRINTLN("[VULKAN]: Image Views created!");
+    }
+
+    void VulkanRenderApi::_RecreateSwapChain()
+    {
+        vkDeviceWaitIdle(_Data->Device.GetHandle());
+        _DestroySwapChain();
+        _CreateSwapChain();
+    }
+
+    void VulkanRenderApi::_DestroySwapChain()
+    {
+        for (auto imageview : _Data->SwapChainImageViews)
+            vkDestroyImageView(_Data->Device.GetHandle(), imageview, nullptr);
+        vkDestroySwapchainKHR(_Data->Device.GetHandle(), _Data->SwapChain, nullptr);
     }
 
     void ReadFile(const char *FilePath, std::vector<char> &CharData)
@@ -830,9 +886,12 @@ namespace VEngine
         rasterizer.rasterizerDiscardEnable = VK_FALSE;
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth = 1.0f;
-
         rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterizer.depthBiasEnable = VK_FALSE;
+        rasterizer.depthBiasConstantFactor = 0.0f; // Optional
+        rasterizer.depthBiasClamp = 0.0f;          // Optional
+        rasterizer.depthBiasSlopeFactor = 0.0f;    // Optional
 
         rasterizer.depthBiasEnable = VK_FALSE;
         rasterizer.depthBiasConstantFactor = 0.0f; // Optional
@@ -872,15 +931,32 @@ namespace VEngine
         // Graphics pipeline
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        // 🆕 UPDATED: Vertex input descriptions for the new shader
+        std::vector<VkVertexInputBindingDescription> bindingDescriptions(1);
+        bindingDescriptions[0].binding = 0;
+        bindingDescriptions[0].stride = sizeof(Vertex);
+        bindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-        VkPipelineVertexInputStateCreateInfo vertexInputinfo{};
-        vertexInputinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInputinfo.vertexBindingDescriptionCount = 0;
-        vertexInputinfo.vertexAttributeDescriptionCount = 0;
-        vertexInputinfo.pVertexAttributeDescriptions = nullptr;
-        vertexInputinfo.pVertexBindingDescriptions = nullptr;
+        std::vector<VkVertexInputAttributeDescription> attributeDescriptions(2);
+        // Position attribute
+        attributeDescriptions[0].binding = 0;
+        attributeDescriptions[0].location = 0;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT; // vec2
+        attributeDescriptions[0].offset = offsetof(Vertex, pos);
+        // Color attribute
+        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].location = 1;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT; // vec3
+        attributeDescriptions[1].offset = offsetof(Vertex, color);
 
-        pipelineInfo.pVertexInputState = &vertexInputinfo;
+        VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInputInfo.vertexBindingDescriptionCount = bindingDescriptions.size();
+        vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
+        vertexInputInfo.vertexAttributeDescriptionCount = attributeDescriptions.size();
+        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+        pipelineInfo.pVertexInputState = &vertexInputInfo;
         pipelineInfo.pNext = &renderingInfo; // Link dynamic rendering info
         pipelineInfo.stageCount = 2;
         pipelineInfo.pStages = shaderStages;
@@ -967,17 +1043,129 @@ namespace VEngine
 
     Ref<VertexBuffer> VulkanResourceFactory::CreateVertexBuffer(const VertexBufferDesc &desc)
     {
-        return Ref<VertexBuffer>();
+        Ref<VulkanVertexBuffer> VB = std::make_shared<VulkanVertexBuffer>(_Data->Allocator, desc);
+        return VB;
+    }
+
+    bool VulkanResourceFactory::DeleteVertexBuffer(const Ref<VertexBuffer> &VB)
+    {
+        auto VulkanVB = std::static_pointer_cast<VulkanVertexBuffer>(VB);
+        VulkanVB->Destroy(_Data->Allocator);
+        return true;
     }
 
     Ref<IndexBuffer> VulkanResourceFactory::CreateIndexBuffer(const IndexBufferDesc &desc)
     {
-        return Ref<IndexBuffer>();
+        Ref<VulkanIndexBuffer> IB = std::make_shared<VulkanIndexBuffer>(_Data->Allocator, desc);
+        return IB;
     }
 
-    Ref<Shader> VulkanResourceFactory::CreateGraphicsPipeline(const GraphicsShaderDesc &desc)
+    bool VulkanResourceFactory::DeleteIndexBuffer(const Ref<IndexBuffer> &IB)
     {
-        return Ref<Shader>();
+        auto VulkanIB = std::static_pointer_cast<VulkanIndexBuffer>(IB);
+        VulkanIB->Destroy(_Data->Allocator);
+        return true;
+    }
+
+    VulkanVertexBuffer::VulkanVertexBuffer(VmaAllocator Allocator, const VertexBufferDesc &desc)
+    {
+        this->_Count = desc.Count;
+        this->_Size = desc.SizeInBytes;
+
+        VkBufferCreateInfo bufferInfo = {};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = desc.SizeInBytes;
+        bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+        VmaAllocationCreateInfo allocInfo = {};
+
+        if (desc.Type == BufferTypes::STATIC_DRAW)
+        {
+            // TODO: Use staging buffer VMA_MEMORY_USAGE_GPU_ONLY
+            allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU; // For frequent updates
+            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
+        else if (desc.Type == BufferTypes::DYNAMIC_DARW)
+        {
+            // Use staging buffer
+            allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU; // For frequent updates
+            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        }
+        else if (desc.Type == BufferTypes::DYNAMIC_STREAM)
+        {
+            // Use staging buffer
+            allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU; // For frequent updates
+            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
+
+        vmaCreateBuffer(Allocator, &bufferInfo, &allocInfo, &_Buffer, &_Allocation, &_AllocatoinInfo);
+
+        // Copy vertex data
+        UploadData(desc.Data, desc.SizeInBytes);
+    }
+
+    void VulkanVertexBuffer::UploadData(const void *data, uint32_t size)
+    {
+        memcpy(_AllocatoinInfo.pMappedData, data, size);
+    }
+
+    void VulkanVertexBuffer::Destroy(VmaAllocator Allocator)
+    {
+        vmaDestroyBuffer(Allocator, _Buffer, _Allocation);
+    }
+
+    VulkanIndexBuffer::VulkanIndexBuffer(VmaAllocator Allocator, const IndexBufferDesc &desc)
+    {
+        this->_Count = desc.Count;
+        this->_Size = desc.SizeInBytes;
+        this->_DataType = desc.DataType;
+
+        VkBufferCreateInfo bufferInfo = {};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = desc.SizeInBytes;
+        bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+        VmaAllocationCreateInfo allocInfo = {};
+
+        if (desc.Type == BufferTypes::STATIC_DRAW)
+        {
+            // TODO: Use staging buffer VMA_MEMORY_USAGE_GPU_ONLY
+            allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU; // For frequent updates
+            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
+        else if (desc.Type == BufferTypes::DYNAMIC_DARW)
+        {
+            // Use staging buffer
+            allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU; // For frequent updates
+            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+        }
+        else if (desc.Type == BufferTypes::DYNAMIC_STREAM)
+        {
+            // Use staging buffer
+            allocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU; // For frequent updates
+            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        }
+
+        vmaCreateBuffer(Allocator, &bufferInfo, &allocInfo, &_Buffer, &_Allocation, &_AllocatoinInfo);
+
+        // Copy vertex data
+        UploadData(desc.Data, desc.SizeInBytes);
+    }
+
+    void VulkanIndexBuffer::UploadData(const void *data, uint32_t size)
+    {
+        memcpy(_AllocatoinInfo.pMappedData, data, size);
+    }
+
+    void VulkanIndexBuffer::Destroy(VmaAllocator Allocator)
+    {
+        vmaDestroyBuffer(Allocator, _Buffer, _Allocation);
     }
 #pragma endregion
 } // namespace VEngine

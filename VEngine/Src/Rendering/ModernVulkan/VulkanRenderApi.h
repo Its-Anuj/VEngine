@@ -1,7 +1,6 @@
 #pragma once
 
 #include "RendererAPI.h"
-#include "Buffers.h"
 struct VkDebugUtilsMessengerCreateInfoEXT;
 
 namespace VEngine
@@ -35,8 +34,10 @@ namespace VEngine
         void Terminate();
 
         Ref<VertexBuffer> CreateVertexBuffer(const VertexBufferDesc &desc) override;
-        Ref<IndexBuffer> CreateIndexBuffer(const IndexBufferDesc &desc) override;
-        Ref<Shader> CreateGraphicsPipeline(const GraphicsShaderDesc &desc) override;
+        bool DeleteVertexBuffer(const Ref<VertexBuffer>& VB) override;
+
+        Ref<IndexBuffer> CreateIndexBuffer(const IndexBufferDesc& desc) override;
+        bool DeleteIndexBuffer(const Ref<IndexBuffer>& IB) override;
 
     private:
         VulkanRenderData *_Data;
@@ -48,14 +49,14 @@ namespace VEngine
         // Respective to own renderer api spec
         void Init(void *Spec) override;
         void Terminate() override;
-        void Render() override ;
-        void FrameBufferResize(int x, int y) override {}
+        void Render() override;
+        void FrameBufferResize(int x, int y) override ;
 
-        void Submit() override ;
-        void Present() override ;
-        void Begin(const RenderPassSpec &Spec) override ;
+        void Submit(const Ref<VertexBuffer> &VB, const Ref<IndexBuffer>& IB) override;
+        void Present() override;
+        void Begin(const RenderPassSpec &Spec) override;
         void End() override;
-        void Finish() override {}
+        void Finish() override;
 
         Ref<ResourceFactory> GetResourceFactory() override { return _ResourceFactory; }
 
@@ -71,6 +72,8 @@ namespace VEngine
         void _CreateLogicalDevice();
 
         void _CreateSwapChain();
+        void _RecreateSwapChain();
+        void _DestroySwapChain();
 
         void _CreateGraphiscPipeline();
 

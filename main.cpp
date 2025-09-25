@@ -3,11 +3,6 @@
 
 namespace VEngine
 {
-    struct Vertex
-    {
-        Vec2 pos;
-        Vec3 color;
-    };
 
     class Editor : public Layer
     {
@@ -23,35 +18,41 @@ namespace VEngine
         void OnInit() override
         {
             const std::vector<Vertex> vertices = {
-                // Left square (center x=-0.5)
-                {{-0.75f, -0.25f}, {1.0f, 0.0f, 0.0f}}, // 0: bottom-left, red
-                {{-0.25f, -0.25f}, {0.0f, 1.0f, 0.0f}}, // 1: bottom-right, green
-                {{-0.25f, 0.25f}, {0.0f, 0.0f, 1.0f}},  // 2: top-right, blue
-                {{-0.75f, 0.25f}, {1.0f, 1.0f, 0.0f}},  // 3: top-left, yellow
-            };
+                {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+                {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
-            const std::vector<uint16_t> indices = {
-                // Left square
-                0,
-                1,
-                2,
-                0,
-                2,
-                3,
-            };
+            const std::vector<uint16_t> indicies = {0, 1, 2};
+            {
+                VertexBufferDesc desc{};
+                desc.Data = (void *)vertices.data();
+                desc.SizeInBytes = sizeof(Vertex) * vertices.size();
+                desc.Type = BufferTypes::STATIC_DRAW;
 
-            // _VB = VEngine::VertexBuffer::Create((float *)vertices.data(), 5 * vertices.size(), BufferTypes::STATIC);
-            // _IB = VEngine::IndexBuffer::Create((void *)indices.data(), indices.size(), IndexBufferType::UINT_16, BufferTypes::STATIC);
+                _TriangleVB = Renderer::__GetResouceFactory()->CreateVertexBuffer(desc);
+            }
+            {
+                IndexBufferDesc desc{};
+                desc.Data = (void *)indicies.data();
+                desc.SizeInBytes = sizeof(uint16_t) * indicies.size();
+                desc.Type = BufferTypes::STATIC_DRAW;
+                desc.Count = indicies.size();
+                desc.DataType = IndexBufferType::UINT_16;
+
+                _TriangleIB = Renderer::__GetResouceFactory()->CreateIndexBuffer(desc);
+            }
         }
 
         void OnUpdate(TimeStep ts) override
         {
-            // TODO: Rename 
+            VENGINE_APP_PRINTLN("Fps:  " << ts.GetFPS() << " Time: " << ts.GetMilliSecond());
+
+            // TODO: Rename
             RenderPassSpec Spec;
             Spec.ClearColor = {0.2, 0.2, 0.2, 1.0f};
 
             Renderer::Begin(Spec);
-            Renderer::Submit();
+            Renderer::Submit(_TriangleVB, _TriangleIB);
             Renderer::End();
 
             Renderer::Render(); // to a framebuffer
@@ -60,8 +61,9 @@ namespace VEngine
 
         void OnTerminate() override
         {
-            // _VB->Destroy();
-            // _IB->Destroy();
+            Renderer::Finish();
+            Renderer::__GetResouceFactory()->DeleteVertexBuffer(_TriangleVB);
+            Renderer::__GetResouceFactory()->DeleteIndexBuffer(_TriangleIB);
         }
 
         void OnEvent(Event &e) override
@@ -71,9 +73,8 @@ namespace VEngine
         }
 
     private:
-        std::shared_ptr<VEngine::VertexBuffer> _VB;
-        std::shared_ptr<VEngine::IndexBuffer> _IB;
-        std::shared_ptr<VEngine::Shader> _Shader;
+        Ref<VertexBuffer> _TriangleVB;
+        Ref<IndexBuffer> _TriangleIB;
     };
 }; // namespace VEngine
 

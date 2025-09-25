@@ -7,3 +7,6 @@
 [submodule "VEngine/Libs/VMA"]
 	path = VEngine/Libs/VMA
 	url = https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+[submodule "VEngine/Libs/shaderc"]
+	path = VEngine/Libs/shaderc
+	url = https://github.com/google/shaderc.git

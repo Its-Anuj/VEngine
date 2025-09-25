@@ -3,6 +3,7 @@ project(Editor VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 add_subdirectory(VEngine)
+set(CMAKE_BUILD_PARALLEL_LEVEL 8)
 
 # Check if Libs exist
 
@@ -13,7 +14,7 @@ include_directories("VEngine/Src/Layers")
 include_directories("VEngine/Src/")
 include_directories("VEngine/Src/Input")
 include_directories("VEngine/Src/Rendering/")
-include_directories("VEngine/Src/UUID/")
+include_directories("VEngine/Src/UUID/")    
 include_directories("VEngine/Src/Events")
 include_directories("VEngine/Src/Window")
 include_directories("VEngine/Libs/glfw/include/GLFW/")

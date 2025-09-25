@@ -1,9 +1,16 @@
 #pragma once
 
+#include <glm/glm.hpp>
 #include "UUID/UUID.h"
 
 namespace VEngine
 {
+    struct Vertex
+    {
+        glm::vec2 pos;
+        glm::vec3 color;
+    };
+
     enum class IndexBufferType
     {
         UINT_8,
@@ -14,58 +21,65 @@ namespace VEngine
 
     enum class BufferTypes
     {
-        STATIC,
-        DYNAMIC
+        STATIC_DRAW,
+        DYNAMIC_DARW,
+        DYNAMIC_STREAM,
     };
 
     struct VertexBufferDesc
     {
         BufferTypes Type;
-        void* Data;
+        void *Data;
         int SizeInBytes;
+        int32_t Count = 0;
     };
-    
+
     struct IndexBufferDesc
     {
         BufferTypes Type;
-        void* Data;
+        void *Data;
         int SizeInBytes;
-        IndexBufferType IntType;
+        int32_t Count = 0;
+        IndexBufferType DataType;
     };
 
     class VertexBuffer
     {
     public:
         VertexBuffer() {}
-        ~VertexBuffer() {}
+        virtual ~VertexBuffer() {}
 
-        virtual bool Init(const VertexBufferDesc& desc) = 0;
-        virtual void Bind() = 0;
-        virtual void Destroy() = 0;
-
-        static std::shared_ptr<VertexBuffer> Create(const VertexBufferDesc& desc);
+        virtual void UploadData(const void *data, uint32_t size) = 0;
 
         const UUID &ID() const { return _ID; }
+        uint32_t GetSize() const { return _Size; }
+        int32_t GetCoutn() const { return _Count; }
 
-    private:
+    protected:
         UUID _ID;
+        // Size in bytes of the buffer
+        uint32_t _Size = 0;
+        int32_t _Count = 0;
     };
 
     class IndexBuffer
     {
     public:
         IndexBuffer() {}
-        ~IndexBuffer() {}
+        virtual ~IndexBuffer() {}
 
-        virtual bool Init(const IndexBufferDesc& desc) = 0;
-        virtual void Bind() = 0;
-        virtual void Destroy() = 0;
-        virtual uint32_t Size() const = 0;
+        virtual void UploadData(const void *data, uint32_t size) = 0;
 
         const UUID &ID() const { return _ID; }
-        static std::shared_ptr<IndexBuffer> Create(const IndexBufferDesc& desc);
+        uint32_t GetSize() const { return _Size; }
+        int32_t GetCount() const { return _Count; }
+        IndexBufferType GetDataType() const { return _DataType; }
 
-    private:
+    protected:
         UUID _ID;
+        // Size in bytes of the buffer
+        uint32_t _Size = 0;
+        int32_t _Count = 0;
+        IndexBufferType _DataType;
     };
 } // namespace VEngine

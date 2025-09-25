@@ -41,6 +41,7 @@ namespace VEngine
 
         void SwapBuffers();
         bool ShouldClose();
+        void PollEvents();
 
         void Init(const WindowData &Data);
         void SetVSync(bool state);

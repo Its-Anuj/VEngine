@@ -33,10 +33,10 @@ namespace VEngine
     {
         while (!_Window.ShouldClose())
         {
+            _Window.PollEvents();
             auto Startime = GetWindowTime();
             TimeStep ts = Startime - _LastTime;
             _LastTime = Startime;
-            // VENGINE_APP_PRINTLN("Fps:  " << ts.GetFPS() << " Time: " << ts.GetMilliSecond());
 
             for (auto layer : _Stack)
                 layer->OnUpdate(ts);
