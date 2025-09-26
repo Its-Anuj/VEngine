@@ -1,78 +1,75 @@
 # VEngine
 
-VEngine is a modular C++ game engine project. Its architecture is divided into three main parts:
+VEngine is my personal attempt at creating a small, modular **game engine** with modern **Vulkan 1.3** support.  
+The project is split into a clean architecture with core and rendering layers, aiming to build up from simple rendering towards a more complete engine.
 
-## Engine Structure
+---
 
-### 1. VEngineCore
-Handles all core engine functionality:
-- Windowing
-- Input
-- Events
-- Logging
-- Application lifecycle
+## Architecture
 
-### 2. VEngineRenderAPI
-Responsible for rendering. It is further divided into:
-- **VEngineVulkan:** Vulkan-based rendering backend
-- **VEngineOpenGL:** OpenGL-based rendering backend
+The engine is organized into the following main modules:
 
-### 3. VEngineExtensions
-Provides extended engine features:
-- Asset loading
-- Shader maps
-- Cameras
-- Other utilities
+- **VEngineCore**
+  - Handles **windowing** (via GLFW)
+  - **Main application loop**
+  - **Input** and **events**
 
-## Project Layout
+- **VEngineRenderApi**
+  - Abstract rendering interface
+  - Responsible for **resources** and **rendering**
+  - Current implementation: **VEngineModernVulkan**
 
-```
-VEngine/
-├── Src/
-│   ├── Core/           # VEngineCore: windowing, input, events, etc.
-│   ├── Rendering/      # VEngineRenderAPI
-│   │   ├── Vulkan/     # VEngineVulkan
-│   │   └── OpenGL/     # VEngineOpenGL
-│   └── Extensions/     # VEngineExtensions: assets, cameras, etc.
-├── Libs/
-│   └── glfw/           # Windowing/input library
-```
+- **VEngineModernVulkan**
+  - Backend built on **Vulkan 1.3**
+  - Uses **VMA** (Vulkan Memory Allocator) for memory management
+  - Uses **Shaderc** for runtime shader compilation
+  - Currently supports rendering a **textured quad**
+  - Next steps:
+    - Add **depth buffer support**
+    - **Refactor and clean up** the architecture for clarity
+
+---
+
+## Dependencies
+
+The engine relies on the following external libraries:
+
+- [GLFW](https://www.glfw.org/) – Windowing & input  
+- [GLM](https://github.com/g-truc/glm) – Math library  
+- [stb](https://github.com/nothings/stb) – Image loading (textures)  
+- [Vulkan 1.3 SDK](https://vulkan.lunarg.com/sdk/home) – Graphics API  
+- [Shaderc](https://github.com/google/shaderc) – Shader compilation  
+- [Vulkan Memory Allocator (VMA)](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) – Memory management  
+
+---
+
+## Current Progress
+
+✅ Rendering a **quad** with a texture.  
+⬜ Next milestone: **Depth buffer support**.  
+⬜ Planned: Refactoring the architecture for readability and modularity.
+
+---
+
+## Screenshot
+
+*(Insert screenshot of the textured quad here)*
+![alt text](<Screenshot 2025-09-26 210506.png>)
+---
 
 ## Building
 
-This project uses [CMake](https://cmake.org/) for configuration and building.
+We use **CMake** + **Ninja** as the build system.
 
-### Prerequisites
+```bash
+# Create build output folder
+mkdir out
 
-- C++20 compatible compiler (MSVC, GCC, or Clang)
-- [CMake](https://cmake.org/download/)
-- Vulkan SDK (for Vulkan rendering)
-- OpenGL development libraries (for OpenGL backend)
+# Configure project (Debug build)
+cmake -S . -B out -DCMAKE_BUILD_TYPE=Debug
 
-### Build Steps
+# Compile shaders
+call shadercompile
 
-```sh
-cmake -S . -B build
-cmake --build build
-```
-
-## Usage
-
-- The engine core is in `VEngine/Src/Core`.
-- Rendering backends are in `VEngine/Src/Rendering/Vulkan` and `VEngine/Src/Rendering/OpenGL`.
-- Extensions and utilities are in `VEngine/Src/Extensions`.
-
-## License
-
-See [`LICENSE`](LICENSE) for details.
-
-## References
-
-- [GLFW Documentation](https://www.glfw.org/docs/latest/)
-- [Vulkan SDK](https://vulkan.lunarg.com/)
-
-also include:
-libgcc_s_seh-1.dll
-libstdc++-6.dll
-
-if .dll errors comes 
+# Build with Ninja
+cmake --build out -- -j
