@@ -33,7 +33,7 @@ set(ENGINE_DIR ${SIMULATION_DIR}/VEngine)
 set(ENGINE_SRC_DIR ${ENGINE_DIR}/Src)
 set(ENGINE_LIBS_DIR ${ENGINE_DIR}/Libs)
 
-target_link_libraries(Editor PRIVATE VEngine glfw VEngineVulkan VulkanMemoryAllocator glm::glm)
+target_link_libraries(Editor PRIVATE VEngine glfw VEngineVulkan VulkanMemoryAllocator glm::glm shaderc)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(Editor PRIVATE VENGINE_DEBUG_BUILD)

@@ -8,6 +8,19 @@ add_subdirectory(Libs/VMA)
 
 # Add glm subdir
 add_subdirectory(Libs/glm)
+# Disable extras
+set(SHADERC_SKIP_TESTS ON CACHE BOOL "Skip building shaderc tests" FORCE)
+set(SHADERC_SKIP_EXAMPLES ON CACHE BOOL "Skip building shaderc examples" FORCE)
+set(SHADERC_SKIP_EXECUTABLES ON CACHE BOOL "Skip building shaderc executables" FORCE)
+set(SHADERC_ENABLE_WERROR_COMPILE OFF CACHE BOOL "" FORCE)
+
+# Tell Shaderc where to find its dependencies
+set(SHADERC_THIRD_PARTY_ROOT_DIR "${CMAKE_SOURCE_DIR}/VEngine/Libs/shaderc/third_party" CACHE PATH "Shaderc third_party root" FORCE)
+set(SHADERC_SPIRV_TOOLS_DIR "${CMAKE_SOURCE_DIR}/VEngine/Libs/SPIRV-Tools" CACHE PATH "SPIRV-Tools source directory" FORCE)
+set(SHADERC_GLSLANG_DIR "${CMAKE_SOURCE_DIR}/VEngine/Libs/glslang" CACHE PATH "glslang source directory" FORCE)
+
+# Now add Shaderc
+add_subdirectory(Libs/shaderc)
 
 include_directories("Src/Layers")
 include_directories("Src/UUID")
@@ -21,6 +34,8 @@ include_directories("Src/")
 include_directories("Libs/glfw/include/GLFW/")
 include_directories("Libs/glm/glm/")
 include_directories("Libs/VMA/include/")
+include_directories("Libs/stb/")
+include_directories("Libs/shaderc/libshaderc/include/")
 
 include_directories("C:/VulkanSDK/1.3.275.0/Include/vulkan")
 include_directories("C:/VulkanSDK/1.3.275.0/Include/")

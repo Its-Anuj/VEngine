@@ -10,3 +10,12 @@
 [submodule "VEngine/Libs/shaderc"]
 	path = VEngine/Libs/shaderc
 	url = https://github.com/google/shaderc.git
+[submodule "VEngine/Libs/SPIRV-Tools"]
+	path = VEngine/Libs/SPIRV-Tools
+	url = https://github.com/KhronosGroup/SPIRV-Tools.git
+[submodule "VEngine/Libs/glslang"]
+	path = VEngine/Libs/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+[submodule "VEngine/Libs/stb"]
+	path = VEngine/Libs/stb
+	url = https://github.com/nothings/stb.git

@@ -5,6 +5,11 @@ struct VkDebugUtilsMessengerCreateInfoEXT;
 
 namespace VEngine
 {
+    struct VulkanVersion
+    {
+        int16_t Max, Min, Patch;
+    };
+
     struct VulkanRenderSpec
     {
         bool EnableValidationLayer = true;
@@ -24,24 +29,7 @@ namespace VEngine
     };
 
     struct VulkanRenderData;
-
-    struct VulkanResourceFactory : public ResourceFactory
-    {
-    public:
-        VulkanResourceFactory(VulkanRenderData *data) : _Data(data) {}
-        ~VulkanResourceFactory();
-
-        void Terminate();
-
-        Ref<VertexBuffer> CreateVertexBuffer(const VertexBufferDesc &desc) override;
-        bool DeleteVertexBuffer(const Ref<VertexBuffer>& VB) override;
-
-        Ref<IndexBuffer> CreateIndexBuffer(const IndexBufferDesc& desc) override;
-        bool DeleteIndexBuffer(const Ref<IndexBuffer>& IB) override;
-
-    private:
-        VulkanRenderData *_Data;
-    };
+    struct VulkanResourceFactory;
 
     class VulkanRenderApi : public RendererAPI
     {
@@ -50,15 +38,15 @@ namespace VEngine
         void Init(void *Spec) override;
         void Terminate() override;
         void Render() override;
-        void FrameBufferResize(int x, int y) override ;
+        void FrameBufferResize(int x, int y) override;
 
-        void Submit(const Ref<VertexBuffer> &VB, const Ref<IndexBuffer>& IB) override;
+        void Submit(const Ref<VertexBuffer> &VB, const Ref<IndexBuffer> &IB) override;
         void Present() override;
         void Begin(const RenderPassSpec &Spec) override;
         void End() override;
         void Finish() override;
 
-        Ref<ResourceFactory> GetResourceFactory() override { return _ResourceFactory; }
+        Ref<ResourceFactory> GetResourceFactory() override;
 
     private:
         void _CreateInstance();
@@ -82,7 +70,17 @@ namespace VEngine
 
         void _CreateSyncObjects();
 
-        void _RecordCommandBuffer(uint32_t imageindex);
+        void _CreateDescriptorSetLayout();
+        void _CreateUniformBuffers();
+        void _UploadUniformBuffer();
+        void _CreateDescriptorPool();
+        void _CreateDescriptorSets();
+
+        void _CreateTextures();
+        void _TransitionImageLayout(VkCommandBuffer commandBuffer, VkImage Image, VkImageLayout NewLayout, VkImageLayout OldLayout);
+        VkImageView _CreateTextureImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+        VkSampler _CreateTextureSampler();
+        void _CreateTextureDescriptorResources();
 
     private:
         VulkanRenderData *_Data;

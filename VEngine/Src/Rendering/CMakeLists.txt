@@ -7,6 +7,7 @@ include_directories(".")
 include_directories("..")
 include_directories("Vulkan/")
 include_directories("../../Libs/VMA/include/")
+include_directories("../../Libs/stb/")
 
 target_precompile_headers(VEngineVulkan PRIVATE ModernVulkan/VeVPCH.h)
 target_link_libraries(VEngineVulkan PUBLIC VEngine)

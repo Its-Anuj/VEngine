@@ -17,17 +17,24 @@ namespace VEngine
 
         void OnInit() override
         {
-            const std::vector<Vertex> vertices = {
-                {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-                {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+            std::vector<Vertex> vertices = {
+                // pos         // color            // tex
+                {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // bottom-left
+                {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},  // bottom-right
+                {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},   // top-right
+                {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},  // top-left
+            };
 
-            const std::vector<uint16_t> indicies = {0, 1, 2};
+            std::vector<uint16_t> indicies = {
+                0, 1, 2, // first triangle
+                2, 3, 0  // second triangle
+            };
             {
                 VertexBufferDesc desc{};
                 desc.Data = (void *)vertices.data();
                 desc.SizeInBytes = sizeof(Vertex) * vertices.size();
                 desc.Type = BufferTypes::STATIC_DRAW;
+                desc.Count = vertices.size();
 
                 _TriangleVB = Renderer::__GetResouceFactory()->CreateVertexBuffer(desc);
             }

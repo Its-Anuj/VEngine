@@ -9,6 +9,7 @@ namespace VEngine
     {
         glm::vec2 pos;
         glm::vec3 color;
+        glm::vec2 tex;
     };
 
     enum class IndexBufferType
