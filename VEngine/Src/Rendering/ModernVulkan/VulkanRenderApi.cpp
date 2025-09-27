@@ -101,9 +101,9 @@ namespace VEngine
         _CreateSwapChain();
         _CreateUniformBuffers();
 
-        // _CreateDescriptorSetLayout();
-        // _CreateDescriptorPool();
-        // _CreateDescriptorSets();
+        _CreateDescriptorSetLayout();
+        _CreateDescriptorPool();
+        _CreateDescriptorSets();
 
         _CreateCommandPool();
         _CreateCommandBuffer();
@@ -114,6 +114,7 @@ namespace VEngine
 
         _CreateTextures();
         _CreateTextureDescriptorResources();
+        _CreateDepthData();
 
         _CreateGraphiscPipeline();
 
@@ -128,6 +129,9 @@ namespace VEngine
 
         vkDestroyDescriptorPool(_Data->Device.GetHandle(), _Data->TextureDescriptor.pool, nullptr);
         vkDestroyDescriptorSetLayout(_Data->Device.GetHandle(), _Data->TextureDescriptor.layout, nullptr);
+
+        vkDestroyImageView(_Data->Device.GetHandle(), _Data->DepthData.imageview, nullptr);
+        vmaDestroyImage(_Data->Allocator, _Data->DepthData.image, _Data->DepthData.allocation);
 
         vkDestroySampler(_Data->Device.GetHandle(), _Data->Texture.sampler, nullptr);
         vkDestroyImageView(_Data->Device.GetHandle(), _Data->Texture.imageView, nullptr);
@@ -206,7 +210,7 @@ namespace VEngine
 
     void VulkanRenderApi::Submit(const Ref<VertexBuffer> &VB, const Ref<IndexBuffer> &IB)
     {
-        // _UploadUniformBuffer();
+        _UploadUniformBuffer();
         auto VulkanVB = std::static_pointer_cast<VulkanVertexBuffer>(VB);
         auto VulkanIB = std::static_pointer_cast<VulkanIndexBuffer>(IB);
 
@@ -235,6 +239,7 @@ namespace VEngine
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _Data->GraphicsPipeline.GetLayout(), 0, 1, &_Data->TextureDescriptor.sets[_Data->CurrentFrame], 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _Data->GraphicsPipeline.GetLayout(), 1, 1, &_Data->DescriptorSets[_Data->CurrentFrame], 0, nullptr);
 
         vkCmdBindIndexBuffer(commandBuffer, VulkanIB->GetHandle(), 0, VK_INDEX_TYPE_UINT16);
         // 🎨 Draw your geometry
@@ -338,8 +343,18 @@ namespace VEngine
         colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         colorAttachment.clearValue = {{Spec.ClearColor.x, Spec.ClearColor.y, Spec.ClearColor.z, Spec.ClearColor.w}};
 
+        // Depth attachment  ✅ ADD THIS
+        VkRenderingAttachmentInfo depthAttachment{};
+        depthAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+        depthAttachment.imageView = _Data->DepthData.imageview;
+        depthAttachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.clearValue.depthStencil = {1.0f, 0}; // Clear to far plane
+
         renderingInfo.colorAttachmentCount = 1;
         renderingInfo.pColorAttachments = &colorAttachment;
+        renderingInfo.pDepthAttachment = &depthAttachment; // ✅ ADD THIS
 
         vkCmdBeginRendering(commandBuffer, &renderingInfo);
     }
@@ -754,12 +769,14 @@ namespace VEngine
     void VulkanRenderApi::_CreateGraphiscPipeline()
     {
         VulkanGraphicsPipelineSpec GraphicsSpec;
-        GraphicsSpec.Attributes = {{0, 0, ShaderDataType::FLOAT2, "position"}, {0, 1, ShaderDataType::FLOAT3, "color"}, {0, 2, ShaderDataType::FLOAT2, "tex"}};
+        GraphicsSpec.Attributes = {{0, 0, ShaderDataType::FLOAT3, "position"}, {0, 1, ShaderDataType::FLOAT3, "color"}, {0, 2, ShaderDataType::FLOAT2, "tex"}};
         GraphicsSpec.Paths = {"vert.spv", "frag.spv"};
         GraphicsSpec.Name = "main";
         GraphicsSpec.device = _Data->Device.GetHandle();
         GraphicsSpec.SwapChainFormat = _Data->Format;
-        GraphicsSpec.DescLayout = _Data->TextureDescriptor.layout;
+        GraphicsSpec.DescLayouts = {_Data->TextureDescriptor.layout, _Data->DescriptorSetLayout};
+        GraphicsSpec.UseDepth = true;
+        GraphicsSpec.DepthFormat = _Data->DepthData.format;
 
         _Data->GraphicsPipeline.Init(GraphicsSpec);
     }
@@ -824,7 +841,7 @@ namespace VEngine
     void VulkanRenderApi::_CreateDescriptorSetLayout()
     {
         VkDescriptorSetLayoutBinding uboLayoutBinding{};
-        uboLayoutBinding.binding = 0;
+        uboLayoutBinding.binding = 1;
         uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         uboLayoutBinding.descriptorCount = 1;
         uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -904,7 +921,7 @@ namespace VEngine
             VkWriteDescriptorSet descriptorWrite{};
             descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrite.dstSet = _Data->DescriptorSets[i];
-            descriptorWrite.dstBinding = 0;
+            descriptorWrite.dstBinding = 1;
             descriptorWrite.dstArrayElement = 0;
             descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             descriptorWrite.descriptorCount = 1;
@@ -914,6 +931,46 @@ namespace VEngine
 
             vkUpdateDescriptorSets(_Data->Device.GetHandle(), 1, &descriptorWrite, 0, nullptr);
         }
+    }
+
+    struct VulkanImageSpec
+    {
+        struct
+        {
+            int x, y;
+        } Dims;
+        VkImageType ImageType;
+        VkFormat Format;
+        VkImageLayout Layout;
+        VkImageUsageFlags Usage;
+        VkSharingMode SharingMode;
+        VkSampleCountFlagBits Samples;
+        VkImageTiling Tiling;
+    };
+
+    void CreateVulkanImage(VmaAllocator Allocator, VkImage &image, VmaAllocation &Allocation, const VulkanImageSpec &Spec)
+    {
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.extent.width = Spec.Dims.x;
+        imageInfo.extent.height = Spec.Dims.y;
+        imageInfo.extent.depth = 1;
+        imageInfo.imageType = Spec.ImageType;
+        imageInfo.extent.depth = 1;
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.format = Spec.Format;
+        imageInfo.tiling = Spec.Tiling;
+        imageInfo.initialLayout = Spec.Layout;
+        imageInfo.usage = Spec.Usage;
+        imageInfo.sharingMode = Spec.SharingMode;
+        imageInfo.samples = Spec.Samples;
+
+        VmaAllocationCreateInfo imageAllocInfo{};
+        imageAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
+        imageAllocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+        vmaCreateImage(Allocator, &imageInfo, &imageAllocInfo, &image, &Allocation, nullptr);
     }
 
     void VulkanRenderApi::_CreateTextures()
@@ -940,27 +997,17 @@ namespace VEngine
 
         stbi_image_free(pixels);
 
-        VkImageCreateInfo imageInfo{};
-        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.extent.width = texWidth;
-        imageInfo.extent.height = texHeight;
-        imageInfo.extent.depth = 1;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.extent.depth = 1;
-        imageInfo.mipLevels = 1;
-        imageInfo.arrayLayers = 1;
-        imageInfo.format = _Data->Texture.format;
-        imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-
-        VmaAllocationCreateInfo imageAllocInfo{};
-        imageAllocInfo.usage = VMA_MEMORY_USAGE_AUTO;
-        imageAllocInfo.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-        vmaCreateImage(_Data->Allocator, &imageInfo, &imageAllocInfo, &_Data->Texture.image, &_Data->Texture.allocation, nullptr);
+        VulkanImageSpec ImageSpec{};
+        ImageSpec.Dims.x = texWidth;
+        ImageSpec.Dims.y = texHeight;
+        ImageSpec.Format = VK_FORMAT_R8G8B8A8_SRGB;
+        ImageSpec.ImageType = VK_IMAGE_TYPE_2D;
+        ImageSpec.Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+        ImageSpec.Samples = VK_SAMPLE_COUNT_1_BIT;
+        ImageSpec.Usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        ImageSpec.SharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        ImageSpec.Tiling = VK_IMAGE_TILING_OPTIMAL;
+        CreateVulkanImage(_Data->Allocator, _Data->Texture.image, _Data->Texture.allocation, ImageSpec);
 
         SingleTimeCommandBuffer SingleCommandSpec{};
         SingleCommandSpec.Family = QueueFamilies::TRANSFER;
@@ -1120,6 +1167,75 @@ namespace VEngine
         }
     }
 
+    void VulkanRenderApi::_CreateDepthData()
+    {
+        _Data->DepthData.format = FindDepthFormat();
+
+        VulkanImageSpec ImageSpec{};
+        ImageSpec.Dims.x = _Data->FrameBufferSize.x;
+        ImageSpec.Dims.y = _Data->FrameBufferSize.y;
+        ImageSpec.Format = _Data->DepthData.format;
+        ImageSpec.ImageType = VK_IMAGE_TYPE_2D;
+        ImageSpec.Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+        ImageSpec.Samples = VK_SAMPLE_COUNT_1_BIT;
+        ImageSpec.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        ImageSpec.SharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        ImageSpec.Tiling = VK_IMAGE_TILING_OPTIMAL;
+
+        CreateVulkanImage(_Data->Allocator, _Data->DepthData.image, _Data->DepthData.allocation, ImageSpec);
+
+        // Create image view
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewInfo.image = _Data->DepthData.image;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.format = _Data->DepthData.format;
+        viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        viewInfo.subresourceRange.baseMipLevel = 0;
+        viewInfo.subresourceRange.levelCount = 1;
+        viewInfo.subresourceRange.baseArrayLayer = 0;
+        viewInfo.subresourceRange.layerCount = 1;
+
+        vkCreateImageView(_Data->Device.GetHandle(), &viewInfo, nullptr, &_Data->DepthData.imageview);
+
+        // Transition to correct layout
+        SingleTimeCommandBuffer CommandSpec{};
+        CommandSpec.Family = QueueFamilies::GRAPHICS;
+        _ResourceFactory->BeginSingleTimeCommand(CommandSpec);
+        _TransitionAttachmentImageLayout(CommandSpec.Cmd, _Data->DepthData.image, _Data->DepthData.format,
+                                         VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                         VK_IMAGE_LAYOUT_UNDEFINED);
+        _ResourceFactory->EndSingleTimeCommand(CommandSpec);
+    }
+
+    VkFormat VulkanRenderApi::FindDepthFormat()
+    {
+        return FindSupportedFormat(
+            {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    }
+
+    VkFormat VulkanRenderApi::FindSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+    {
+        for (VkFormat format : candidates)
+        {
+            VkFormatProperties props = VulkanUtils::GetPhysicalDeviceFormatProperties(_Data->PhysicalDevices[_Data->ActivePhysicalDeviceIndex], format);
+
+            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+                return format;
+            else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+                return format;
+        }
+
+        throw std::runtime_error("failed to find supported format!");
+    }
+
+    bool VulkanRenderApi::HasStencilComponent(VkFormat format)
+    {
+        return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+    }
+
     void VulkanRenderApi::_TransitionImageLayout(VkCommandBuffer commandBuffer, VkImage Image, VkImageLayout OldLayout, VkImageLayout NewLayout)
     {
         VkImageMemoryBarrier barrier{};
@@ -1138,13 +1254,16 @@ namespace VEngine
         VkPipelineStageFlags sourceStage;
         VkPipelineStageFlags destinationStage;
 
-        if (OldLayout == VK_IMAGE_LAYOUT_UNDEFINED && NewLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+        if (OldLayout == VK_IMAGE_LAYOUT_UNDEFINED)
         {
-            barrier.srcAccessMask = 0;
-            barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            if (NewLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+            {
+                barrier.srcAccessMask = 0;
+                barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-            destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+                sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            }
         }
         else if (OldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && NewLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
         {
@@ -1153,6 +1272,59 @@ namespace VEngine
 
             sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
             destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        }
+        else
+        {
+            throw std::invalid_argument("unsupported layout transition!");
+        }
+
+        vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+    }
+
+    void VulkanRenderApi::_TransitionAttachmentImageLayout(VkCommandBuffer commandBuffer, VkImage Image, VkFormat Format, VkImageLayout NewLayout, VkImageLayout OldLayout)
+    {
+        VkImageMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        barrier.oldLayout = OldLayout;
+        barrier.newLayout = NewLayout;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.image = Image;
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+        if (NewLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+        {
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            if (HasStencilComponent(Format))
+            {
+                barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+            }
+        }
+        else
+        {
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+
+        barrier.subresourceRange.baseMipLevel = 0;
+        barrier.subresourceRange.levelCount = 1;
+        barrier.subresourceRange.baseArrayLayer = 0;
+        barrier.subresourceRange.layerCount = 1;
+
+        VkPipelineStageFlags sourceStage, destinationStage;
+
+        if (OldLayout == VK_IMAGE_LAYOUT_UNDEFINED && NewLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+        {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        }
+        else if (OldLayout == VK_IMAGE_LAYOUT_UNDEFINED && NewLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+        {
+            barrier.srcAccessMask = 0;
+            barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         }
         else
         {
@@ -1244,6 +1416,13 @@ namespace VEngine
         version.Min = VK_API_VERSION_MINOR(ApiVersion);
         version.Patch = VK_API_VERSION_PATCH(ApiVersion);
         return version;
+    }
+
+    VkFormatProperties VulkanUtils::GetPhysicalDeviceFormatProperties(VulkanPhysicalDevice &Device, VkFormat Format)
+    {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(Device.PhysicalDevice, Format, &props);
+        return props;
     }
 
 #pragma endregion

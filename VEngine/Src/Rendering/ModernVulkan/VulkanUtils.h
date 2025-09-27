@@ -11,5 +11,7 @@ namespace VEngine
         bool CheckIfExtensionExist(std::vector<const char *> &Extensions);
         bool CheckIfLayerExist(std::vector<const char *> &Layers);
         VulkanVersion GetInstanceVulkanVersion();
+
+        VkFormatProperties GetPhysicalDeviceFormatProperties(VulkanPhysicalDevice& Device, VkFormat Format);
     } // namespace VulkanUtils
 } // namespace VEngine

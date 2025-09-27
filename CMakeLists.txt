@@ -4,6 +4,7 @@ project(Editor VERSION 0.1.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 add_subdirectory(VEngine)
 set(CMAKE_BUILD_PARALLEL_LEVEL 8)
+# find_package(Vulkan REQUIRED)
 
 # Check if Libs exist
 
@@ -33,7 +34,7 @@ set(ENGINE_DIR ${SIMULATION_DIR}/VEngine)
 set(ENGINE_SRC_DIR ${ENGINE_DIR}/Src)
 set(ENGINE_LIBS_DIR ${ENGINE_DIR}/Libs)
 
-target_link_libraries(Editor PRIVATE VEngine glfw VEngineVulkan VulkanMemoryAllocator glm::glm shaderc)
+target_link_libraries(Editor PRIVATE VEngine glfw VEngineVulkan VulkanMemoryAllocator glm::glm)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(Editor PRIVATE VENGINE_DEBUG_BUILD)
@@ -56,3 +57,4 @@ endif()
 set(VULKAN_SDK "C:/VulkanSDK/1.3.275.0/")
 
 target_link_libraries(Editor PRIVATE ${VULKAN_SDK}/Lib/vulkan-1.lib )
+target_link_libraries(Editor PRIVATE ${VULKAN_SDK}/Lib/shaderc_combined.lib )

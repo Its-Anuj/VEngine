@@ -17,18 +17,21 @@ namespace VEngine
 
         void OnInit() override
         {
-            std::vector<Vertex> vertices = {
-                // pos         // color            // tex
-                {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, // bottom-left
-                {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},  // bottom-right
-                {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},   // top-right
-                {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},  // top-left
-            };
+            const std::vector<Vertex> vertices = {
+                {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+                {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+                {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
 
-            std::vector<uint16_t> indicies = {
-                0, 1, 2, // first triangle
-                2, 3, 0  // second triangle
-            };
+                {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+                {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+                {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
+
+            const std::vector<uint16_t> indices = {
+                0, 1, 2, 2, 3, 0,
+                4, 5, 6, 6, 7, 4};
+
             {
                 VertexBufferDesc desc{};
                 desc.Data = (void *)vertices.data();
@@ -40,10 +43,10 @@ namespace VEngine
             }
             {
                 IndexBufferDesc desc{};
-                desc.Data = (void *)indicies.data();
-                desc.SizeInBytes = sizeof(uint16_t) * indicies.size();
+                desc.Data = (void *)indices.data();
+                desc.SizeInBytes = sizeof(uint16_t) * indices.size();
                 desc.Type = BufferTypes::STATIC_DRAW;
-                desc.Count = indicies.size();
+                desc.Count = indices.size();
                 desc.DataType = IndexBufferType::UINT_16;
 
                 _TriangleIB = Renderer::__GetResouceFactory()->CreateIndexBuffer(desc);

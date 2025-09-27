@@ -16,6 +16,14 @@
 
 namespace VEngine
 {
+    struct DepthBufferData
+    {
+        VkImage image;
+        VkImageView imageview;
+        VkFormat format;
+        VmaAllocation allocation;
+    };
+
     struct VulkanRenderData
     {
         // Inital Setups
@@ -61,6 +69,7 @@ namespace VEngine
 
         VulkanTextures Texture;
         VulkanTextureDescriptor TextureDescriptor;
+        DepthBufferData DepthData;
     };
 
     struct UniformBufferObject

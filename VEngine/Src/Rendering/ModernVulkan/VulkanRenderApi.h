@@ -78,9 +78,15 @@ namespace VEngine
 
         void _CreateTextures();
         void _TransitionImageLayout(VkCommandBuffer commandBuffer, VkImage Image, VkImageLayout NewLayout, VkImageLayout OldLayout);
+        void _TransitionAttachmentImageLayout(VkCommandBuffer commandBuffer, VkImage Image,VkFormat Format, VkImageLayout NewLayout, VkImageLayout OldLayout);
         VkImageView _CreateTextureImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
         VkSampler _CreateTextureSampler();
         void _CreateTextureDescriptorResources();
+
+        void _CreateDepthData();
+        VkFormat FindDepthFormat();
+        VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+        bool HasStencilComponent(VkFormat format);
 
     private:
         VulkanRenderData *_Data;

@@ -155,7 +155,9 @@ namespace VEngine
         VkDevice device;
         const char *Name;
         VkFormat SwapChainFormat;
-        VkDescriptorSetLayout DescLayout;
+        std::vector<VkDescriptorSetLayout> DescLayouts;
+        bool UseDepth = false;
+        VkFormat DepthFormat;
     };
 
     class VulkanGraphicsPipeline

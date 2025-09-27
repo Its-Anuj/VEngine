@@ -1,7 +1,7 @@
 # VEngine
 
-VEngine is my personal attempt at creating a small, modular **game engine** with modern **Vulkan 1.3** support.  
-The project is split into a clean architecture with core and rendering layers, aiming to build up from simple rendering towards a more complete engine.
+VEngine is a **personal, modular game engine** built with modern **Vulkan 1.3**.  
+The engine is designed with a clean architecture, separating **core functionality** from **rendering**, with a focus on building from simple rendering toward a complete engine.
 
 ---
 
@@ -9,55 +9,55 @@ The project is split into a clean architecture with core and rendering layers, a
 
 The engine is organized into the following main modules:
 
-- **VEngineCore**
-  - Handles **windowing** (via GLFW)
-  - **Main application loop**
-  - **Input** and **events**
+- **VEngineCore**  
+  - Handles **windowing** via GLFW  
+  - Provides the **main application loop**  
+  - Manages **input** and **event handling**
 
-- **VEngineRenderApi**
-  - Abstract rendering interface
-  - Responsible for **resources** and **rendering**
-  - Current implementation: **VEngineModernVulkan**
+- **VEngineRenderApi**  
+  - Abstract rendering interface  
+  - Manages **resources**, **pipelines**, and **rendering operations**  
+  - Current implementation: **VulkanBackend** (refactored from VEngineModernVulkan)
 
-- **VEngineModernVulkan**
-  - Backend built on **Vulkan 1.3**
-  - Uses **VMA** (Vulkan Memory Allocator) for memory management
-  - Uses **Shaderc** for runtime shader compilation
-  - Currently supports rendering a **textured quad**
-  - Next steps:
-    - Add **depth buffer support**
-    - **Refactor and clean up** the architecture for clarity
+- **VulkanBackend**  
+  - Modern Vulkan 1.3 backend  
+  - Integrates **depth buffer support**  
+  - Uses **VMA** (Vulkan Memory Allocator) for GPU memory  
+  - Uses **Shaderc** for runtime shader compilation  
+  - Supports rendering **textured quads** with proper depth testing  
+  - Refactored for **modularity and readability**  
 
 ---
 
 ## Dependencies
 
-The engine relies on the following external libraries:
+The engine relies on the following libraries:
 
 - [GLFW](https://www.glfw.org/) – Windowing & input  
 - [GLM](https://github.com/g-truc/glm) – Math library  
 - [stb](https://github.com/nothings/stb) – Image loading (textures)  
 - [Vulkan 1.3 SDK](https://vulkan.lunarg.com/sdk/home) – Graphics API  
-- [Shaderc](https://github.com/google/shaderc) – Shader compilation  
+- [Shaderc](https://github.com/google/shaderc) – Runtime shader compilation  
 - [Vulkan Memory Allocator (VMA)](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) – Memory management  
 
 ---
 
 ## Current Progress
 
-✅ Rendering a **quad** with a texture.  
-⬜ Next milestone: **Depth buffer support**.  
-⬜ Planned: Refactoring the architecture for readability and modularity.
+✅ Render **textured quad** with **depth buffer support**  
+✅ Depth testing implemented for proper occlusion  
+⬜ Next: Refactor Vulkan backend fully into a clean and modular structure  
 
 ---
 
 ## Screenshot
 
-*(Insert screenshot of the textured quad here)*
-![alt text](<Screenshot 2025-09-26 210506.png>)
+Here’s a current screenshot showing a **textured quad with depth buffer enabled**:  
+
+![Current](<Screenshot 2025-09-27 130808.png>)
 ---
 
-## Building
+## Build Instructions
 
 We use **CMake** + **Ninja** as the build system.
 

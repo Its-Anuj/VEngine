@@ -75,7 +75,7 @@ namespace VEngine
 
             StagingBuffer.Destroy(_Data->Allocator);
         }
-        
+
         return IB;
     }
 
@@ -460,8 +460,8 @@ namespace VEngine
         // Pipeline layout
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &Spec.DescLayout;
+        pipelineLayoutInfo.setLayoutCount = Spec.DescLayouts.size();
+        pipelineLayoutInfo.pSetLayouts = Spec.DescLayouts.data();
         VULKAN_SUCCESS_ASSERT(vkCreatePipelineLayout(Spec.device, &pipelineLayoutInfo, nullptr, &_PipelineLayout), "[VULKAN]: Pipeline Layout creation failed!");
 
         // 🆕 NEW: Add dynamic rendering structure
@@ -469,6 +469,11 @@ namespace VEngine
         renderingInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         renderingInfo.colorAttachmentCount = 1;
         renderingInfo.pColorAttachmentFormats = &Spec.SwapChainFormat; // Use swapchain format
+
+        if (Spec.UseDepth)
+        {
+            renderingInfo.depthAttachmentFormat = Spec.DepthFormat;
+        }
 
         std::vector<VkDynamicState> dynamicStates = {
             VK_DYNAMIC_STATE_VIEWPORT,
@@ -496,7 +501,7 @@ namespace VEngine
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth = 1.0f;
         rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterizer.depthBiasEnable = VK_FALSE;
         rasterizer.depthBiasConstantFactor = 0.0f; // Optional
         rasterizer.depthBiasClamp = 0.0f;          // Optional
@@ -540,6 +545,20 @@ namespace VEngine
         // Graphics pipeline
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+        pipelineInfo.pDepthStencilState = nullptr; // Optional
+
+        VkPipelineDepthStencilStateCreateInfo depthStencil{};
+        if (Spec.UseDepth)
+        {
+            // Depth stencil state (same as before)
+            depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+            depthStencil.depthTestEnable = VK_TRUE;
+            depthStencil.depthWriteEnable = VK_TRUE;
+            depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+            depthStencil.depthBoundsTestEnable = VK_FALSE;
+            depthStencil.stencilTestEnable = VK_FALSE;
+            pipelineInfo.pDepthStencilState = &depthStencil;
+        }
 
         VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
         vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -557,10 +576,8 @@ namespace VEngine
         pipelineInfo.pViewportState = &viewportState;
         pipelineInfo.pRasterizationState = &rasterizer;
         pipelineInfo.pMultisampleState = &multisampling;
-        pipelineInfo.pDepthStencilState = nullptr; // Optional
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.layout = _PipelineLayout;
-        pipelineInfo.pDepthStencilState = nullptr; // Optional
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
         pipelineInfo.basePipelineIndex = -1;
 
